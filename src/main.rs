@@ -1,4 +1,5 @@
 use p2p_settlement_arena::agents::{run_bisq_easy, BISQ_EASY_SCENARIOS};
+use p2p_settlement_arena::control::{ControlCase, ControlSession, Guard};
 use p2p_settlement_arena::market::ProtocolProfile;
 use p2p_settlement_arena::scenarios::{run_scenario, SCENARIOS};
 use p2p_settlement_arena::swarm::{compare_policies, run_swarm, SwarmConfig, SwarmReport};
@@ -14,6 +15,7 @@ fn usage() {
            settlement-arena profiles\n\
            settlement-arena swarm [--seed 7 --rounds 48 --policy reputation --trace]\n\
            settlement-arena swarm-compare [--seed 7 --rounds 48 --trace]\n\
+           settlement-arena control <case> <strict|legacy> [comma-separated-actions]\n\
          Output: JSONL for scenarios, nonzero exit for failed test or invalid input."
     );
 }
@@ -50,6 +52,35 @@ fn emit_swarm(report: &SwarmReport, trace: bool) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let command = args.get(1).map(String::as_str);
+    if command == Some("control") {
+        if args.len() < 4 || args.len() > 5 {
+            usage();
+            std::process::exit(2);
+        }
+        let case = match ControlCase::parse(&args[2]) {
+            Some(value) => value,
+            None => {
+                eprintln!("unknown control case: {}", args[2]);
+                std::process::exit(2);
+            }
+        };
+        let guard = match Guard::parse(&args[3]) {
+            Some(value) => value,
+            None => {
+                eprintln!("unknown control guard: {}", args[3]);
+                std::process::exit(2);
+            }
+        };
+        let history = args.get(4).map(String::as_str).unwrap_or("");
+        match ControlSession::replay(case, guard, history) {
+            Ok(session) => println!("{}", session.json_line()),
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(2);
+            }
+        }
+        return;
+    }
     if matches!(command, Some("swarm" | "swarm-compare")) {
         if args
             .get(2)

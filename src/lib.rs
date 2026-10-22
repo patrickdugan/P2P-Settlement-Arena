@@ -5,6 +5,7 @@
 use std::collections::BTreeSet;
 
 pub mod agents;
+pub mod control;
 pub mod market;
 pub mod scenarios;
 pub mod swarm;
