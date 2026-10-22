@@ -69,8 +69,8 @@ pub struct Offer {
 impl Default for Offer {
     fn default() -> Self {
         Self {
-            quote_usd_cents: 5_000, // $50
-            btc_sats: 100_000, // 0.001 BTC
+            quote_usd_cents: 5_000,                   // $50
+            btc_sats: 100_000,                        // 0.001 BTC
             fixed_price_usd_cents_per_btc: 5_000_000, // $50,000 / BTC
             seller_reputation_points: 10_000,
             seller_initial_btc_sats: 200_300,
@@ -174,8 +174,7 @@ impl Offer {
             return Err(EasyFault::ContractPriceMismatch);
         }
         oracle.verify(now)?;
-        if !(BISQ_EASY_MIN_USD_CENTS..=BISQ_EASY_MAX_USD_CENTS)
-            .contains(&self.quote_usd_cents)
+        if !(BISQ_EASY_MIN_USD_CENTS..=BISQ_EASY_MAX_USD_CENTS).contains(&self.quote_usd_cents)
             || self.fixed_price_usd_cents_per_btc == 0
             || self.btc_sats == 0
         {
@@ -475,7 +474,9 @@ impl EasyNode {
                 Err(EasyFault::ConflictingReplay)
             };
         }
-        let candidate = self.state.transition(self.offer, self.oracle, self.now, event)?;
+        let candidate = self
+            .state
+            .transition(self.offer, self.oracle, self.now, event)?;
         self.state = candidate;
         self.journal.push(event);
         Ok(true)
@@ -543,15 +544,23 @@ mod tests {
     #[test]
     fn default_is_bisq_easy() {
         assert_eq!(ProtocolProfile::default(), ProtocolProfile::BisqEasy);
-        assert_eq!(ProtocolProfile::parse("bisq"), Some(ProtocolProfile::BisqEasy));
-        assert_eq!(ProtocolProfile::parse("bisq-musig"), Some(ProtocolProfile::BisqMuSigModel));
+        assert_eq!(
+            ProtocolProfile::parse("bisq"),
+            Some(ProtocolProfile::BisqEasy)
+        );
+        assert_eq!(
+            ProtocolProfile::parse("bisq-musig"),
+            Some(ProtocolProfile::BisqMuSigModel)
+        );
     }
 
     #[test]
     fn offer_validates_reputation_tolerance() {
         let oracle = Oracle::default();
         let offer = Offer::default();
-        assert!(offer.verify(oracle, SIMULATED_NOW, offer.fixed_price_usd_cents_per_btc).is_ok());
+        assert!(offer
+            .verify(oracle, SIMULATED_NOW, offer.fixed_price_usd_cents_per_btc)
+            .is_ok());
         let min_required = Offer {
             seller_reputation_points: 9_500,
             ..offer
@@ -565,18 +574,28 @@ mod tests {
             seller_reputation_points: 9_600,
             ..offer
         };
-        assert!(tolerated.verify(oracle, SIMULATED_NOW, offer.fixed_price_usd_cents_per_btc).is_ok());
+        assert!(tolerated
+            .verify(oracle, SIMULATED_NOW, offer.fixed_price_usd_cents_per_btc)
+            .is_ok());
     }
 
     #[test]
     fn oracle_rejects_age_and_skew() {
         let now = SIMULATED_NOW;
         assert_eq!(
-            Oracle { market_observed_at: now - ORACLE_MAX_AGE_SECONDS, ..Oracle::default() }.verify(now),
+            Oracle {
+                market_observed_at: now - ORACLE_MAX_AGE_SECONDS,
+                ..Oracle::default()
+            }
+            .verify(now),
             Err(EasyFault::StaleMarketPrice)
         );
         assert_eq!(
-            Oracle { usd_observed_at: now - ORACLE_MAX_SKEW_SECONDS - 1, ..Oracle::default() }.verify(now),
+            Oracle {
+                usd_observed_at: now - ORACLE_MAX_SKEW_SECONDS - 1,
+                ..Oracle::default()
+            }
+            .verify(now),
             Err(EasyFault::OracleTimestampSkew)
         );
     }
@@ -587,7 +606,9 @@ mod tests {
         let result = node.receive(event(
             1,
             EasyActor::Buyer,
-            EasyAction::TakeOffer { contract_price: 3_000_000 },
+            EasyAction::TakeOffer {
+                contract_price: 3_000_000,
+            },
         ));
         assert_eq!(result, Err(EasyFault::ContractPriceMismatch));
         assert!(node.journal.is_empty());
@@ -598,11 +619,21 @@ mod tests {
     fn fifo_payment_first_and_conservation() {
         let mut node = EasyNode::default();
         let actions = [
-            (EasyActor::Buyer, EasyAction::TakeOffer { contract_price: 5_000_000 }),
+            (
+                EasyActor::Buyer,
+                EasyAction::TakeOffer {
+                    contract_price: 5_000_000,
+                },
+            ),
             (EasyActor::Bank, EasyAction::TransferFiat),
             (EasyActor::Buyer, EasyAction::ClaimFiatSent),
             (EasyActor::Seller, EasyAction::ConfirmFiat),
-            (EasyActor::Buyer, EasyAction::SetBitcoinPaymentRequest { requested_sats: Some(100_000) }),
+            (
+                EasyActor::Buyer,
+                EasyAction::SetBitcoinPaymentRequest {
+                    requested_sats: Some(100_000),
+                },
+            ),
             (EasyActor::Seller, EasyAction::SendBitcoin),
         ];
         for (i, (actor, action)) in actions.iter().enumerate() {
@@ -618,7 +649,13 @@ mod tests {
     #[test]
     fn same_id_altered_payload_is_rejected() {
         let mut node = EasyNode::default();
-        let first = event(1, EasyActor::Buyer, EasyAction::TakeOffer { contract_price: 5_000_000 });
+        let first = event(
+            1,
+            EasyActor::Buyer,
+            EasyAction::TakeOffer {
+                contract_price: 5_000_000,
+            },
+        );
         assert_eq!(node.receive(first), Ok(true));
         assert_eq!(node.receive(first), Ok(false));
         assert_eq!(
@@ -631,8 +668,16 @@ mod tests {
     #[test]
     fn fake_fiat_claim_cannot_authorize_btc_release() {
         let mut node = EasyNode::default();
-        node.receive(event(1, EasyActor::Buyer, EasyAction::TakeOffer { contract_price: 5_000_000 })).unwrap();
-        node.receive(event(2, EasyActor::Buyer, EasyAction::ClaimFiatSent)).unwrap();
+        node.receive(event(
+            1,
+            EasyActor::Buyer,
+            EasyAction::TakeOffer {
+                contract_price: 5_000_000,
+            },
+        ))
+        .unwrap();
+        node.receive(event(2, EasyActor::Buyer, EasyAction::ClaimFiatSent))
+            .unwrap();
         assert_eq!(
             node.receive(event(3, EasyActor::Seller, EasyAction::ConfirmFiat)),
             Err(EasyFault::FiatNotReceived)
@@ -643,9 +688,22 @@ mod tests {
     #[test]
     fn overlarge_invoice_is_rejected_before_sending_btc() {
         let mut node = EasyNode::default();
-        node.receive(event(1, EasyActor::Buyer, EasyAction::TakeOffer { contract_price: 5_000_000 })).unwrap();
+        node.receive(event(
+            1,
+            EasyActor::Buyer,
+            EasyAction::TakeOffer {
+                contract_price: 5_000_000,
+            },
+        ))
+        .unwrap();
         assert_eq!(
-            node.receive(event(2, EasyActor::Buyer, EasyAction::SetBitcoinPaymentRequest { requested_sats: Some(1_000_000) })),
+            node.receive(event(
+                2,
+                EasyActor::Buyer,
+                EasyAction::SetBitcoinPaymentRequest {
+                    requested_sats: Some(1_000_000)
+                }
+            )),
             Err(EasyFault::PaymentRequestAmountMismatch)
         );
         assert!(!node.state.bitcoin_request_approved);
@@ -654,7 +712,14 @@ mod tests {
     #[test]
     fn cannot_release_btc_before_real_fiat_receipt() {
         let mut node = EasyNode::default();
-        node.receive(event(1, EasyActor::Buyer, EasyAction::TakeOffer { contract_price: 5_000_000 })).unwrap();
+        node.receive(event(
+            1,
+            EasyActor::Buyer,
+            EasyAction::TakeOffer {
+                contract_price: 5_000_000,
+            },
+        ))
+        .unwrap();
         assert_eq!(
             node.receive(event(2, EasyActor::Seller, EasyAction::SendBitcoin)),
             Err(EasyFault::InvalidTransition)

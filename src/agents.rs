@@ -367,7 +367,8 @@ mod tests {
     #[test]
     fn all_default_bisq_easy_scenarios_meet_their_oracles() {
         for scenario in BISQ_EASY_SCENARIOS {
-            let result = run_bisq_easy(scenario).unwrap_or_else(|error| panic!("{scenario}: {error}"));
+            let result =
+                run_bisq_easy(scenario).unwrap_or_else(|error| panic!("{scenario}: {error}"));
             assert!(result.passed, "scenario failed: {scenario}");
         }
     }
@@ -405,7 +406,11 @@ mod tests {
         offer.seller_initial_btc_sats = 1_202_300;
         offer.seller_reputation_points = 300_000;
         assert_eq!(
-            offer.verify(Oracle::default(), SIMULATED_NOW, offer.fixed_price_usd_cents_per_btc),
+            offer.verify(
+                Oracle::default(),
+                SIMULATED_NOW,
+                offer.fixed_price_usd_cents_per_btc
+            ),
             Err(EasyFault::InvalidOfferAmount)
         );
     }

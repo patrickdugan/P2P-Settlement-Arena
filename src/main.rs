@@ -37,7 +37,10 @@ fn names(profile: ProtocolProfile) -> &'static [&'static str] {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if matches!(args.get(1).map(String::as_str), Some("--help" | "-h" | "help")) {
+    if matches!(
+        args.get(1).map(String::as_str),
+        Some("--help" | "-h" | "help")
+    ) {
         usage();
         return;
     }
