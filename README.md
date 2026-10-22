@@ -141,6 +141,30 @@ python -m controlarena_adapter.bisq_observer --market USD
 The observer never publishes/takes offers, signs payments, or prints private
 trade details. Both adapters are opt-in.
 
+## Two real Bisq 2 application nodes
+
+An opt-in [two-node Bisq 2 harness](docs/BISQ_TWO_NODE.md) now knows how to
+start one local upstream Java seed and two API-app nodes with fresh profiles,
+separate loopback network/API ports, and independently paired API sessions.
+
+The observer reads the authenticated TRADES and TRADE_PROPERTIES WebSocket
+streams, verifies matching Bisq trade ID / contract BTC amounts / regtest
+on-chain receiving address, and can associate a previously confirmed Bitcoin
+Core regtest TXID with that recipient.
+
+~~~bash
+python -m pip install -e '.[bisq2]'
+python -m controlarena_adapter.bisq_two_node \
+  --bisq-root /path/to/bisq2 --plan
+python -m controlarena_adapter.bisq_two_node \
+  --bisq-root /path/to/bisq2 --launch --hold 300
+~~~
+
+This launches real Bisq processes but does not autonomously create Bisq
+user identities, offers or trades. A paired-client integration test and
+synthetic WebSocket fixture suite cover the data boundary. See the full
+guide for how to observe an existing trade and correlate its regtest payout.
+
 ## Bisq MuSig-inspired profile
 
 The existing core models a **different** settlement mechanism with escrow balances, message durability, mediation, crash injection, and a warning/response window.

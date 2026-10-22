@@ -12,6 +12,7 @@ dependencies = []
 
 [project.optional-dependencies]
 controlarena = ["control-arena>=20.1.0,<21", "inspect-ai>=0.3.100"]
+bisq2 = ["websockets>=15,<17"]
 
 [tool.setuptools.packages.find]
 include = ["controlarena_adapter*"]

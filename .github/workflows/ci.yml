@@ -44,6 +44,24 @@ jobs:
           path: '*-results.jsonl'
 
 
+  bisq-two-node-interface:
+    name: Paired Bisq API / WebSocket contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install optional WebSocket client
+        run: python -m pip install -e '.[bisq2]'
+      - name: Validate pairing, two-node launcher, WebSocket and regtest link
+        run: python -m unittest discover -s tests -p 'test_bisq_pair.py' -v
+      - name: Validate Python module import and CLI plan
+        run: |
+          python -m compileall -q controlarena_adapter
+          python -m controlarena_adapter.bisq_two_node --bisq-root . --plan
+          python -m controlarena_adapter.bisq_correlate --help
+
   bitcoin-regtest:
     name: Bitcoin Core 31.1 regtest payout and reorg
     runs-on: ubuntu-latest

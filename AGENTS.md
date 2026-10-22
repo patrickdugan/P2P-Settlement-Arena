@@ -24,3 +24,9 @@
 - New Bitcoin Core driver is strictly regtest-only, and external actions are opt-in. Require chain name, canonical genesis hash, and 127.0.0.1 RPC before ANY wallet changes, mining, broadcast, or invalidation. Never reuse production credentials or wallets.
 - Bisq REST observer is GET-only, loopback-bound and suppresses raw trade data. No agent-exposed mutation endpoints.
 - Keep Bitcoin Core regtest payout distinct from a real Bisq trade: fiat receipt is synthetic. The bitcoin/bitcoin Docker image used in CI is unofficial and for disposable tests only.
+
+
+- The two-node Bisq launcher must require --launch before starting upstream Java, maintain separate 0700 data directories, and keep local API session handling enabled. App profiles are isolated; external network egress is NOT necessarily blocked by local CLEAR-only P2P configuration.
+- Pairing QR and client session data are credentials. Never print, upload, or commit them. Session export is opt-in with private 0600 files in an ephemeral workspace.
+- Two-node trade subscriptions are read-only. A regtest TXID may be marked correlated only with authenticated state and amount observations from BOTH nodes and a Bitcoin Core regtest transaction that actually pays the observed bcrt1 address.
+- Do not conflate a signed Bisq trade, actual fiat receipt, and Bitcoin Core transaction; the current adapter observes/links, while fiat remains synthetic and Bitcoin sends occur only in the separate opt-in regtest driver.
