@@ -203,10 +203,9 @@ impl TradeState {
         }
         let expected_escrow = match self.phase {
             Phase::Offered | Phase::Settled | Phase::Refunded => 0,
-            Phase::Escrowed
-            | Phase::FiatSent
-            | Phase::FiatConfirmed
-            | Phase::Disputed => TRADE_SATS,
+            Phase::Escrowed | Phase::FiatSent | Phase::FiatConfirmed | Phase::Disputed => {
+                TRADE_SATS
+            }
         };
         if self.balances.escrow != expected_escrow {
             return Err(Fault::InvalidEscrowBalance);
@@ -245,9 +244,7 @@ impl TradeState {
             Action::Release if self.phase == Phase::FiatConfirmed => {
                 next.settle_to_buyer()?;
             }
-            Action::OpenDispute
-                if matches!(self.phase, Phase::Escrowed | Phase::FiatSent) =>
-            {
+            Action::OpenDispute if matches!(self.phase, Phase::Escrowed | Phase::FiatSent) => {
                 next.phase = Phase::Disputed;
             }
             Action::ResolveToBuyer if self.phase == Phase::Disputed => {
@@ -484,7 +481,10 @@ mod tests {
         let mut node = Node::new(AckPolicy::AfterCommit);
         node.receive(happy().remove(0), CrashPoint::None).unwrap();
         assert_eq!(
-            node.receive(event(1, Actor::Buyer, Action::MarkFiatSent), CrashPoint::None),
+            node.receive(
+                event(1, Actor::Buyer, Action::MarkFiatSent),
+                CrashPoint::None
+            ),
             Err(Fault::ConflictingReplay)
         );
     }
@@ -517,7 +517,9 @@ mod tests {
     fn safe_ack_is_never_issued_for_lost_event() {
         let mut node = Node::new(AckPolicy::AfterCommit);
         let first = happy().remove(0);
-        let receipt = node.receive(first.clone(), CrashPoint::BeforeCommit).unwrap();
+        let receipt = node
+            .receive(first.clone(), CrashPoint::BeforeCommit)
+            .unwrap();
         assert!(!receipt.acknowledged);
         node.restart().unwrap();
         assert!(node.audit().is_empty());
@@ -559,7 +561,10 @@ mod tests {
             node.receive(e, CrashPoint::None).unwrap();
         }
         assert_eq!(
-            node.receive(event(5, Actor::Mediator, Action::ResolveToSeller), CrashPoint::None),
+            node.receive(
+                event(5, Actor::Mediator, Action::ResolveToSeller),
+                CrashPoint::None
+            ),
             Err(Fault::InvalidTransition)
         );
         assert!(node.audit().is_empty());
@@ -570,15 +575,21 @@ mod tests {
         let mut node = Node::new(AckPolicy::AfterCommit);
         node.receive(happy().remove(0), CrashPoint::None).unwrap();
         assert_eq!(
-            node.receive(event(2, Actor::Mediator, Action::RefundExpired), CrashPoint::None),
+            node.receive(
+                event(2, Actor::Mediator, Action::RefundExpired),
+                CrashPoint::None
+            ),
             Err(Fault::InvalidTransition)
         );
         for id in 3..=5 {
             node.receive(event(id, Actor::Mediator, Action::Tick), CrashPoint::None)
                 .unwrap();
         }
-        node.receive(event(6, Actor::Mediator, Action::RefundExpired), CrashPoint::None)
-            .unwrap();
+        node.receive(
+            event(6, Actor::Mediator, Action::RefundExpired),
+            CrashPoint::None,
+        )
+        .unwrap();
         assert_eq!(node.live.phase, Phase::Refunded);
         assert!(node.audit().is_empty());
     }
@@ -589,15 +600,21 @@ mod tests {
         for e in happy() {
             node.receive(e, CrashPoint::None).unwrap();
         }
-        node.receive(event(5, Actor::Seller, Action::BroadcastWarning), CrashPoint::None)
-            .unwrap();
+        node.receive(
+            event(5, Actor::Seller, Action::BroadcastWarning),
+            CrashPoint::None,
+        )
+        .unwrap();
         for id in 6..=8 {
             node.receive(event(id, Actor::Mediator, Action::Tick), CrashPoint::None)
                 .unwrap();
         }
         assert!(node.audit().contains(&Fault::MissedWatchtowerWindow));
         assert_eq!(
-            node.receive(event(9, Actor::Watchtower, Action::CounterWarning), CrashPoint::None),
+            node.receive(
+                event(9, Actor::Watchtower, Action::CounterWarning),
+                CrashPoint::None
+            ),
             Err(Fault::InvalidTransition)
         );
     }
@@ -607,10 +624,16 @@ mod tests {
         let mut node = Node::new(AckPolicy::AfterCommit);
         node.receive(happy()[0].clone(), CrashPoint::None).unwrap();
         node.receive(happy()[1].clone(), CrashPoint::None).unwrap();
-        node.receive(event(3, Actor::Buyer, Action::OpenDispute), CrashPoint::None)
-            .unwrap();
-        node.receive(event(4, Actor::Mediator, Action::ResolveToBuyer), CrashPoint::None)
-            .unwrap();
+        node.receive(
+            event(3, Actor::Buyer, Action::OpenDispute),
+            CrashPoint::None,
+        )
+        .unwrap();
+        node.receive(
+            event(4, Actor::Mediator, Action::ResolveToBuyer),
+            CrashPoint::None,
+        )
+        .unwrap();
         assert_eq!(node.live.phase, Phase::Settled);
         assert!(node.audit().is_empty());
     }

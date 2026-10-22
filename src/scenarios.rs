@@ -1,8 +1,6 @@
 //! Repeatable attacker/defender benchmark scenarios and machine-readable scoring.
 
-use crate::{
-    AckPolicy, Action, Actor, CrashPoint, Event, Fault, Node, Phase, TRADE_SATS,
-};
+use crate::{AckPolicy, Action, Actor, CrashPoint, Event, Fault, Node, Phase, TRADE_SATS};
 
 pub const SCENARIOS: &[&str] = &[
     "baseline",
@@ -116,8 +114,10 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
         "duplicate-replay" => {
             let first = standard_events().remove(0);
             receive(&mut node, first.clone(), CrashPoint::None)?;
-            let duplicate = node.receive(first, CrashPoint::None)
-                .map_err(|f| f.code().to_string())?.duplicate;
+            let duplicate = node
+                .receive(first, CrashPoint::None)
+                .map_err(|f| f.code().to_string())?
+                .duplicate;
             for e in standard_events().into_iter().skip(1) {
                 receive(&mut node, e, CrashPoint::None)?;
             }
@@ -138,7 +138,8 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
             } else {
                 CrashPoint::AfterCommitBeforeAck
             };
-            let receipt = node.receive(first.clone(), point)
+            let receipt = node
+                .receive(first.clone(), point)
                 .map_err(|f| f.code().to_string())?;
             node.restart().map_err(|f| f.code().to_string())?;
             receive(&mut node, first, CrashPoint::None)?;
@@ -163,7 +164,8 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
                 .receive(standard_events().remove(0), CrashPoint::BeforeCommit)
                 .map_err(|f| f.code().to_string())?;
             node.restart().map_err(|f| f.code().to_string())?;
-            let attack = receipt.acknowledged && !receipt.committed
+            let attack = receipt.acknowledged
+                && !receipt.committed
                 && node.audit().contains(&Fault::AckWithoutDurableCommit);
             Ok(score("ack-before-commit", &node, attack, attack, true, 1))
         }
@@ -177,19 +179,31 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
                 receive(&mut node, e, CrashPoint::None)?;
             }
             let passed = rejected && node.audit().is_empty() && node.journal.len() == 4;
-            Ok(score("conflicting-message-id", &node, passed, false, false, 1))
+            Ok(score(
+                "conflicting-message-id",
+                &node,
+                passed,
+                false,
+                false,
+                1,
+            ))
         }
         "unauthorized-release" => {
             for e in standard_events().into_iter().take(3) {
                 receive(&mut node, e, CrashPoint::None)?;
             }
-            let rejected = node.receive(
-                event(5, Actor::Buyer, Action::Release),
-                CrashPoint::None,
-            ) == Err(Fault::Unauthorized);
+            let rejected = node.receive(event(5, Actor::Buyer, Action::Release), CrashPoint::None)
+                == Err(Fault::Unauthorized);
             receive(&mut node, standard_events()[3].clone(), CrashPoint::None)?;
             let passed = rejected && node.audit().is_empty() && node.live.phase == Phase::Settled;
-            Ok(score("unauthorized-release", &node, passed, false, false, 1))
+            Ok(score(
+                "unauthorized-release",
+                &node,
+                passed,
+                false,
+                false,
+                1,
+            ))
         }
         "double-settlement" => {
             happy_path(&mut node)?;
@@ -197,29 +211,52 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
                 event(5, Actor::Mediator, Action::ResolveToSeller),
                 CrashPoint::None,
             ) == Err(Fault::InvalidTransition);
-            let passed = rejected && node.audit().is_empty()
-                && node.live.balances.escrow == 0;
+            let passed = rejected && node.audit().is_empty() && node.live.balances.escrow == 0;
             Ok(score("double-settlement", &node, passed, false, false, 1))
         }
         "dispute-resolution" => {
             receive(&mut node, standard_events()[0].clone(), CrashPoint::None)?;
             receive(&mut node, standard_events()[1].clone(), CrashPoint::None)?;
-            receive(&mut node, event(3, Actor::Buyer, Action::OpenDispute), CrashPoint::None)?;
-            receive(&mut node, event(4, Actor::Mediator, Action::ResolveToBuyer), CrashPoint::None)?;
+            receive(
+                &mut node,
+                event(3, Actor::Buyer, Action::OpenDispute),
+                CrashPoint::None,
+            )?;
+            receive(
+                &mut node,
+                event(4, Actor::Mediator, Action::ResolveToBuyer),
+                CrashPoint::None,
+            )?;
             let passed = node.live.phase == Phase::Settled && node.audit().is_empty();
             Ok(score("dispute-resolution", &node, passed, false, false, 1))
         }
         "watchtower-success" | "watchtower-timeout" => {
             happy_path(&mut node)?;
-            receive(&mut node, event(5, Actor::Seller, Action::BroadcastWarning), CrashPoint::None)?;
+            receive(
+                &mut node,
+                event(5, Actor::Seller, Action::BroadcastWarning),
+                CrashPoint::None,
+            )?;
             if name == "watchtower-success" {
-                receive(&mut node, event(6, Actor::Mediator, Action::Tick), CrashPoint::None)?;
-                receive(&mut node, event(7, Actor::Watchtower, Action::CounterWarning), CrashPoint::None)?;
+                receive(
+                    &mut node,
+                    event(6, Actor::Mediator, Action::Tick),
+                    CrashPoint::None,
+                )?;
+                receive(
+                    &mut node,
+                    event(7, Actor::Watchtower, Action::CounterWarning),
+                    CrashPoint::None,
+                )?;
                 let passed = node.live.blocked_warnings == 1 && node.audit().is_empty();
                 Ok(score("watchtower-success", &node, passed, false, false, 1))
             } else {
                 for id in 6..=8 {
-                    receive(&mut node, event(id, Actor::Mediator, Action::Tick), CrashPoint::None)?;
+                    receive(
+                        &mut node,
+                        event(id, Actor::Mediator, Action::Tick),
+                        CrashPoint::None,
+                    )?;
                 }
                 let attack = node.audit().contains(&Fault::MissedWatchtowerWindow);
                 Ok(score("watchtower-timeout", &node, attack, attack, false, 1))
@@ -232,7 +269,8 @@ pub fn run_scenario(name: &str) -> Result<Score, String> {
                     let mut probe = Node::new(AckPolicy::AfterCommit);
                     for (index, e) in standard_events().into_iter().enumerate() {
                         if index == fail_at {
-                            let receipt = probe.receive(e.clone(), point)
+                            let receipt = probe
+                                .receive(e.clone(), point)
                                 .map_err(|f| f.code().to_string())?;
                             if receipt.acknowledged {
                                 passed = false;
@@ -300,7 +338,10 @@ mod tests {
                 assert!(!result.safety_findings.is_empty());
             } else {
                 assert!(!result.attack_success);
-                assert!(result.safety_findings.is_empty(), "unexpected finding: {scenario}");
+                assert!(
+                    result.safety_findings.is_empty(),
+                    "unexpected finding: {scenario}"
+                );
             }
         }
     }
