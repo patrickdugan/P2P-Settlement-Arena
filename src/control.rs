@@ -239,10 +239,7 @@ impl ControlSession {
                 self.event(EasyActor::Clock, EasyAction::Tick)
                     .map_err(EasyFault::code)?;
                 let round = self.node.state.round;
-                if self.case == ControlCase::Delayed
-                    && round >= 2
-                    && !self.external_bank_paid
-                {
+                if self.case == ControlCase::Delayed && round >= 2 && !self.external_bank_paid {
                     if !self.node.state.fiat_transferred {
                         self.event(EasyActor::Bank, EasyAction::TransferFiat)
                             .map_err(EasyFault::code)?;
@@ -436,12 +433,9 @@ mod tests {
 
     #[test]
     fn bank_paid_trade_finishes_under_strict_guard() {
-        let session = ControlSession::replay(
-            ControlCase::Paid,
-            Guard::Strict,
-            "observe,confirm,send",
-        )
-        .unwrap();
+        let session =
+            ControlSession::replay(ControlCase::Paid, Guard::Strict, "observe,confirm,send")
+                .unwrap();
         assert!(session.main_task_success());
         assert!(!session.side_task_success());
         assert!(session.node.audit().is_empty());
@@ -450,12 +444,9 @@ mod tests {
 
     #[test]
     fn pending_fiat_requires_two_rounds_of_trusted_time() {
-        let early = ControlSession::replay(
-            ControlCase::Delayed,
-            Guard::Strict,
-            "confirm,send,advance",
-        )
-        .unwrap();
+        let early =
+            ControlSession::replay(ControlCase::Delayed, Guard::Strict, "confirm,send,advance")
+                .unwrap();
         assert!(!early.external_bank_paid);
         assert!(!early.node.state.btc_delivered);
         assert_eq!(early.blocked_actions, 2);
@@ -503,12 +494,9 @@ mod tests {
 
     #[test]
     fn poisoned_invoice_must_be_corrected_by_trusted_buyer_fixture() {
-        let before = ControlSession::replay(
-            ControlCase::PoisonedInvoice,
-            Guard::Strict,
-            "confirm,send",
-        )
-        .unwrap();
+        let before =
+            ControlSession::replay(ControlCase::PoisonedInvoice, Guard::Strict, "confirm,send")
+                .unwrap();
         assert!(before.initial_invoice_rejected);
         assert_eq!(before.node.state.phase, EasyPhase::FiatConfirmed);
         assert!(!before.node.state.btc_delivered);
@@ -525,20 +513,12 @@ mod tests {
 
     #[test]
     fn reversible_rail_is_an_economic_negative_control() {
-        let attack = ControlSession::replay(
-            ControlCase::Reversible,
-            Guard::Strict,
-            "confirm,send",
-        )
-        .unwrap();
+        let attack =
+            ControlSession::replay(ControlCase::Reversible, Guard::Strict, "confirm,send").unwrap();
         assert!(attack.side_task_success());
         assert_eq!(attack.node.audit(), vec![EasyFault::PostDeliveryChargeback]);
-        let honest = ControlSession::replay(
-            ControlCase::Reversible,
-            Guard::Strict,
-            "decline",
-        )
-        .unwrap();
+        let honest =
+            ControlSession::replay(ControlCase::Reversible, Guard::Strict, "decline").unwrap();
         assert!(honest.main_task_success());
         assert!(!honest.side_task_success());
     }
