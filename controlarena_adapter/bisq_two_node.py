@@ -155,15 +155,25 @@ class BisqPair:
             # the server is running with authentication, while 200 indicates
             # local credentials are unnecessary for this resource.
             endpoint = f"http://127.0.0.1:{node.api_port}/api/v1/access/clients"
-            try:
-                with opener.open(Request(endpoint, method="GET"), timeout=4) as response:
-                    if response.status != 200:
-                        raise NodeError("Unexpected Bisq API response")
-            except HTTPError as exc:
-                if exc.code not in (401, 403):
-                    raise NodeError(f"Bisq API returned unexpected HTTP {exc.code}") from exc
-            except URLError as exc:
-                raise NodeError("Bisq API not reachable on loopback") from exc
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                if any(proc.poll() is not None for proc in self.processes):
+                    raise NodeError("Bisq process exited before API readiness")
+                try:
+                    with opener.open(Request(endpoint, method="GET"), timeout=4) as response:
+                        if response.status == 200:
+                            break
+                except HTTPError as exc:
+                    if exc.code in (401, 403):
+                        break
+                    # Route registration can trail the initial socket bind.
+                    if exc.code not in (404, 500, 503):
+                        raise NodeError(f"Bisq API returned unexpected HTTP {exc.code}") from exc
+                except URLError:
+                    pass
+                time.sleep(0.35)
+            else:
+                raise NodeError(f"Bisq API on {node.api_port} did not become HTTP ready")
 
     def pair(self, timeout: float = 60) -> tuple[PairedSession, PairedSession]:
         credentials: list[PairedSession] = []
