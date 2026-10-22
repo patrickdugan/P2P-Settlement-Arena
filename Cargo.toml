@@ -1,0 +1,17 @@
+[package]
+name = "p2p-settlement-arena"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Deterministic adversarial evaluation harness for P2P settlement protocols"
+repository = "https://github.com/patrickdugan/P2P-Settlement-Arena"
+
+[lib]
+name = "p2p_settlement_arena"
+path = "src/lib.rs"
+
+[[bin]]
+name = "settlement-arena"
+path = "src/main.rs"
+
+[dependencies]
