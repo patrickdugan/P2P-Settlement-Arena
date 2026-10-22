@@ -210,6 +210,7 @@ def main() -> None:
     parser.add_argument("--launch", action="store_true", help="Explicitly start all three apps")
     parser.add_argument("--hold", type=int, default=30)
     parser.add_argument("--trade-id", help="Optional existing Bisq Easy trade ID on both nodes")
+    parser.add_argument("--probe-subscriptions", action="store_true", help="Verify both trade-state WebSocket permissions without a trade")
     parser.add_argument("--expected-sats", type=int, default=100_000)
     parser.add_argument("--trade-wait", type=int, default=0, help="Seconds to await matching Bisq trade state")
     parser.add_argument("--txid", help="Optional existing confirmed Bitcoin Core regtest TXID")
@@ -243,6 +244,12 @@ def main() -> None:
             with BisqPair(nodes) as launched:
                 launched.wait_for_apis()
                 alice, bob = launched.pair()
+                if args.probe_subscriptions:
+                    sentinel = "rtg_subscription_probe_001"
+                    for session in (alice, bob):
+                        view = snapshot(session, sentinel, args.expected_sats, listen_seconds=0)
+                        if view.state is not None:
+                            raise NodeError("Unexpected synthetic probe trade in Bisq")
                 if args.export_sessions:
                     session_dir = Path(root) / "sessions"
                     session_dir.mkdir(mode=0o700)
@@ -261,6 +268,7 @@ def main() -> None:
                     "kind": "bisq_pair_started",
                     "node_count": 3,
                     "paired_client_count": 2,
+                    "websocket_subscriptions_verified": bool(args.probe_subscriptions),
                     "nodes": public,
                     "temporary_workspace": root if args.export_sessions else None,
                 }, sort_keys=True))
