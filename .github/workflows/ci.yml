@@ -25,6 +25,10 @@ jobs:
         run: cargo run --quiet -- all | tee bisq-easy-results.jsonl
       - name: MuSig-inspired scenarios
         run: cargo run --quiet -- simulate --profile bisq-musig all | tee bisq-musig-results.jsonl
+      - name: Seeded Bisq marketplace (reputation policy)
+        run: cargo run --quiet -- swarm --seed 7 --rounds 48 --trace | tee swarm-reputation-results.jsonl
+      - name: Seeded Bisq marketplace (price policy)
+        run: cargo run --quiet -- swarm --seed 7 --rounds 48 --policy price --trace | tee swarm-price-results.jsonl
       - uses: actions/upload-artifact@v4
         with:
           name: arena-results

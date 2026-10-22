@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 pub mod agents;
 pub mod market;
 pub mod scenarios;
+pub mod swarm;
 
 pub const TRADE_SATS: u64 = 100_000;
 pub const MINER_FEE_SATS: u64 = 300;

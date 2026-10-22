@@ -18,6 +18,8 @@ cargo run -- all                               # every Bisq Easy scenario
 cargo run -- simulate seller-withholds
 cargo run -- simulate --profile bisq-musig all # MuSig-inspired fault sweep
 cargo run -- profiles
+cargo run -- swarm --seed 7 --rounds 48                 # seeded Bisq market
+cargo run -- swarm --policy price --attacker-pct 50 --trace
 ~~~
 
 CI checks formatting, Clippy, Rust tests, and the entire scenario suite for **both** profiles. It uploads JSONL results.
@@ -28,7 +30,7 @@ CI checks formatting, Clippy, Rust tests, and the entire scenario suite for **bo
 {"protocol":"bisq-easy","scenario":"seller-withholds","passed":true,"attack_success":true,"blocked_attacks":0,"committed_events":8,"final_phase":"FiatConfirmed","buyer_usd_at_risk_cents":5000,"seller_btc_at_risk_sats":0,"safety_findings":["seller_non_delivery"]}
 ~~~
 
-Here, \`passed\` means the benchmark matched its oracle, while \`attack_success\` means the model demonstrated a forbidden economic outcome. Some tests intentionally show a loss even when the benchmark passes. Each result is one JSON line.
+Here, `passed` means the benchmark matched its oracle, while `attack_success` means the model demonstrated a forbidden economic outcome. Some tests intentionally show a loss even when the benchmark passes. Each result is one JSON line.
 
 ## Bisq Easy profile, the default
 
@@ -60,6 +62,28 @@ The real Bisq implementation validates BOLT 11/BIP 21 payment data through multi
 | duplicate-replay | A message ID is repeated identically | Idempotent |
 | conflicting-replay | A committed message ID is reused with another event | Mutation rejected |
 | irreversible-rail | Synthetic irreversible bank rail resists reversal | Chargeback blocked |
+
+## Multi-agent Bisq Easy marketplace
+
+The `swarm` command adds an **agent-populated offer book** above the same one-trade Bisq Easy state machine. It simulates competing market makers, sellers with reputation scores and BTC inventories, buyers with finite fiat budgets, and actor-level attack strategies.
+
+~~~bash
+cargo run -- swarm
+cargo run -- swarm --seed 42 --rounds 100 --buyers 16 --sellers 12 --attacker-pct 40 --policy price --trace
+cargo run -- swarm --seed 42 --rounds 100 --buyers 16 --sellers 12 --attacker-pct 40 --policy reputation --trace
+~~~
+
+- `--seed` fixes deterministic agent generation, offer ordering, and selection.
+- `--policy reputation` (default) uses a **research-only** buyer strategy: demand 2x the reputation required for the amount and reject the synthetic reversible payment rail. This stricter filter is separate from Bisq's actual transaction acceptance rule.
+- `--policy price` chooses the lowest fixed BTC/USD offer, subject to the Bisq Easy offer checks implemented by the protocol model.
+- `--attacker-pct` controls the fraction of agents assigned adversarial behavior. Seller behaviors include BTC withholding; buyer behaviors include false payment claims, oversized BTC requests, and synthetic chargebacks.
+- `--trace` prints per-trade JSONL records followed by a summary, suitable for deterministic replay comparisons and future scoring adapters.
+
+The summary includes completed and unfilled trades, offer rejection, capital exposure, miner fees, simulated fiat/BTC turnover, blocked attacks, attacker wins, and global two-asset conservation. Seller BTC and buyer fiat balances carry across sequential matches. There is one scheduled match attempt per simulated round; the book is a synthetic discovery abstraction, since Bisq trades themselves are negotiated peer to peer.
+
+The simulator has no custody, real fiat payments, signing, or API integration. A `seller_non_delivery` finding means the synthetic seller withheld BTC after receiving synthetic fiat; it does not establish any defect in Bisq.
+
+Detailed architecture and limitations: [Swarm model](docs/SWARM.md).
 
 ## Bisq MuSig-inspired profile
 
@@ -94,7 +118,7 @@ See [Protocol Profiles](docs/PROTOCOL_PROFILES.md), [Threat Model](docs/THREAT_M
 
 ## Next upgrades
 
-1. Integrate deterministic seeded offer books and market making agents with multiple trading counterparties.
+1. Extend the seeded offer book with event-by-event scheduling, simultaneous reservations, and adversarial listing cancellation.
 2. Add cross-currency markets and reproduce price conversion, rounding, and offer limits for supported Bisq payment methods.
 3. Add a strict parser for payment request formats and multiple layers of percent-decoding for BOLT 11 and BIP 21 safety checks.
 4. Develop an fsync-backed journal and simulated network/mailbox scheduling for the MuSig-inspired profile.

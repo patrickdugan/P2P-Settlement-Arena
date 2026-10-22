@@ -1,6 +1,7 @@
 use p2p_settlement_arena::agents::{run_bisq_easy, BISQ_EASY_SCENARIOS};
 use p2p_settlement_arena::market::ProtocolProfile;
 use p2p_settlement_arena::scenarios::{run_scenario, SCENARIOS};
+use p2p_settlement_arena::swarm::{run_swarm, SwarmConfig};
 
 fn usage() {
     eprintln!(
@@ -11,6 +12,7 @@ fn usage() {
            settlement-arena all\n\
            settlement-arena simulate [scenario|all|list] [--profile bisq-easy|bisq-musig]\n\
            settlement-arena profiles\n\
+           settlement-arena swarm [--seed 7 --rounds 48 --policy reputation --trace]\n\
          Output: JSONL for scenarios, nonzero exit for failed test or invalid input."
     );
 }
@@ -37,6 +39,37 @@ fn names(profile: ProtocolProfile) -> &'static [&'static str] {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("swarm") {
+        if args.get(2).is_some_and(|flag| matches!(flag.as_str(), "--help" | "-h")) {
+            println!("{}", p2p_settlement_arena::swarm::usage());
+            return;
+        }
+        let (config, trace) = match SwarmConfig::from_args(&args[2..]) {
+            Ok(config) => config,
+            Err(message) => {
+                eprintln!("{message}");
+                std::process::exit(2);
+            }
+        };
+        match run_swarm(config) {
+            Ok(report) => {
+                if trace {
+                    for trade in &report.trades {
+                        println!("{}", trade.json_line());
+                    }
+                }
+                println!("{}", report.json_line());
+                if !report.conserved {
+                    std::process::exit(1);
+                }
+            }
+            Err(message) => {
+                eprintln!("{message}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     if matches!(
         args.get(1).map(String::as_str),
         Some("--help" | "-h" | "help")

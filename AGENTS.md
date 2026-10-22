@@ -10,3 +10,7 @@
 - Do not use real keys, wallets, production endpoints, user data, or fiat credentials in the arena.
 - Do not copy AGPL-3.0 Bisq 2 sources into this MIT codebase. Link to upstream specifications and implement behavior independently.
 - Run \`cargo fmt --all -- --check\`, \`cargo clippy --all-targets -- -D warnings\`, \`cargo test --all-targets\`, \`cargo run -- all\`, and \`cargo run -- simulate --profile bisq-musig all\`.
+
+- The `swarm` command uses a deterministic seed and synthetic offer book across many buyers/sellers. Keep fiat/BTC conservation across shared balances; prevent repeated matching of one offer ID. Test both `--policy reputation` and `--policy price`.
+- The swarm's 2x-reputation preference is an experimental buyer heuristic, separate from actual Bisq offer-validation limits. Keep this distinction in results and documentation.
+- Before merge, run `cargo run -- swarm --seed 7 --rounds 48` and a multi-seed test of conservation and reproducibility.
