@@ -84,11 +84,19 @@ class PairingTests(unittest.TestCase):
     def test_private_pairing_file_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "pairing_qr_code.txt"
-            path.write_text(_qr_token(18600) + "\n\n[ASCII QR below]\n")
+            path.write_text(_qr_token(18600) + "\n\n██▄▀ █▀▄ ▀▄██\n")
             path.chmod(0o600)
             self.assertEqual(read_pairing_file(path, 18600).code_id, TICKET_ID)
             path.chmod(0o644)
             with self.assertRaisesRegex(PairingError, "0600"):
+                read_pairing_file(path, 18600)
+
+    def test_pairing_token_first_line_must_be_ascii(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "pairing_qr_code.txt"
+            path.write_bytes(b"\\xff\\xfe\\n" + _qr_token(18600).encode("ascii"))
+            path.chmod(0o600)
+            with self.assertRaisesRegex(PairingError, "non-ASCII"):
                 read_pairing_file(path, 18600)
 
     @patch("controlarena_adapter.bisq_pairing._post_local")

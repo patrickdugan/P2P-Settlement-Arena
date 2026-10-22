@@ -134,11 +134,20 @@ def decode_ticket(token: str) -> PairingTicket:
 def read_pairing_file(path: Path, expected_port: int) -> PairingTicket:
     path = Path(path)
     meta = path.lstat()
-    if not stat.S_ISREG(meta.st_mode) or meta.st_size > 16000:
+    if not stat.S_ISREG(meta.st_mode) or meta.st_size > 65536:
         raise PairingError("Pairing file must be a small, regular local file")
     if meta.st_mode & 0o077:
         raise PairingError("Pairing QR file must have private 0600 permissions")
-    token = path.read_text(encoding="ascii").splitlines()[0].strip()
+    # Upstream appends a Unicode block-character QR rendering after line one.
+    # Read the secret Base64 header as raw bytes, avoiding decoding the artwork.
+    with path.open("rb") as stream:
+        encoded = stream.readline(6001).strip()
+    if not encoded or len(encoded) > 6000:
+        raise PairingError("Pairing QR token is empty or too long")
+    try:
+        token = encoded.decode("ascii")
+    except UnicodeError as exc:
+        raise PairingError("Pairing QR token contains non-ASCII bytes") from exc
     ticket = decode_ticket(token)
     ticket.validate(expected_port)
     return ticket

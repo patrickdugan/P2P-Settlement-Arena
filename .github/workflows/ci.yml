@@ -90,6 +90,7 @@ jobs:
         run: python -m controlarena_adapter.bisq_two_node --bisq-root upstream --plan
       - name: Start three isolated Bisq processes and pair both API clients
         run: |
+          set -o pipefail
           python -m controlarena_adapter.bisq_two_node \
             --bisq-root upstream --launch --port-base 18500 --probe-subscriptions --hold 0 \
             | tee bisq-upstream-smoke.jsonl
