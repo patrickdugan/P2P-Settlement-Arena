@@ -2,6 +2,7 @@ name: Rust checks
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -64,7 +65,7 @@ jobs:
 
   bisq-upstream-smoke:
     name: Upstream Bisq 2 seed / Alice / Bob bootstrap
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[bisq-live-smoke]')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[bisq-live-smoke]'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -90,9 +91,9 @@ jobs:
       - name: Start three isolated Bisq processes and pair both API clients
         run: |
           python -m controlarena_adapter.bisq_two_node \
-            --bisq-root upstream --launch --port-base 18500 --hold 0 \
+            --bisq-root upstream --launch --port-base 18500 --probe-subscriptions --hold 0 \
             | tee bisq-upstream-smoke.jsonl
-          python -c "import json; r=json.load(open('bisq-upstream-smoke.jsonl')); assert r['kind']=='bisq_pair_started' and r['paired_client_count']==2 and r['node_count']==3"
+          python -c "import json; r=json.load(open('bisq-upstream-smoke.jsonl')); assert r['kind']=='bisq_pair_started' and r['paired_client_count']==2 and r['node_count']==3 and r['websocket_subscriptions_verified']"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
