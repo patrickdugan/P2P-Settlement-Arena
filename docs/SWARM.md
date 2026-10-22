@@ -92,10 +92,12 @@ Choose many seeds to avoid ranking policies on one generated population. `swarm-
 
 ## Interpret the scoreboard carefully
 
-- `completed` counts fully delivered BTC trades. It includes trades on
-  which an adversarial chargeback later succeeds, because the BTC leg completed.
+- `completed` counts BTC deliveries, including those followed by a synthetic
+  chargeback. `post_delivery_chargeback` is a subset of those completions.
 - `attack_successes` counts seller non-delivery and post-BTC chargeback
   outcomes. It is an in-model scenario result, not evidence of a live exploit.
+- `fiat_volume_cents` counts gross fiat transfers, including payments later
+  reversed by synthetic chargebacks. Account balances show the net reversal.
 - `blocked_attacks` counts attempted false fiat confirmations, oversized BTC
   payment data, and forbidden reversals.
 - `buyer_usd_at_risk_cents` is the sum of fiat paid without contracted BTC

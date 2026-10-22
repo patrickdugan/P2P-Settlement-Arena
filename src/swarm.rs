@@ -827,15 +827,17 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
             report.blocked_attacks += u64::from(execution.blocked);
             report.buyer_usd_at_risk_cents += u128::from(buyer_exposure);
             report.seller_btc_at_risk_sats += u128::from(seller_exposure);
-            if state.fiat_transferred {
+            // Gross fiat flow includes a bank transfer even when a later
+            // chargeback reverses the balance transfer.
+            if execution.node.journal.iter().any(|event| event.action == EasyAction::TransferFiat) {
                 report.fiat_volume_cents += u128::from(offer.quote_usd_cents);
             }
             if state.btc_delivered {
                 report.btc_volume_sats += u128::from(offer.btc_sats);
+                report.completed += 1;
             }
             match execution.outcome {
-                TradeOutcome::Completed => report.completed += 1,
-                TradeOutcome::FiatClaimRejected => {}
+                TradeOutcome::Completed | TradeOutcome::FiatClaimRejected => {}
                 TradeOutcome::BuyerPaidSellerWithheld => report.seller_non_delivery += 1,
                 TradeOutcome::FiatChargebackAfterBtc => report.chargeback_after_btc += 1,
             }
@@ -966,6 +968,31 @@ mod tests {
             .unwrap()
         );
         assert!(comparison.json_line().contains("\"paired_arrivals\":true"));
+    }
+
+    #[test]
+    fn score_counts_gross_fiat_even_after_chargeback() {
+        let report = run_swarm(SwarmConfig {
+            seed: 7,
+            policy: ChoicePolicy::BestPrice,
+            ..SwarmConfig::default()
+        })
+        .unwrap();
+        let btc_deliveries = report
+            .trades
+            .iter()
+            .filter(|trade| matches!(trade.outcome, TradeOutcome::Completed | TradeOutcome::FiatChargebackAfterBtc))
+            .count();
+        let gross_fiat: u128 = report
+            .trades
+            .iter()
+            .filter(|trade| trade.outcome != TradeOutcome::FiatClaimRejected)
+            .map(|trade| u128::from(trade.quote_usd_cents))
+            .sum();
+        assert_eq!(report.completed, btc_deliveries);
+        assert_eq!(report.fiat_volume_cents, gross_fiat);
+        assert!(report.chargeback_after_btc > 0);
+        assert!(report.conserved);
     }
 
     #[test]
