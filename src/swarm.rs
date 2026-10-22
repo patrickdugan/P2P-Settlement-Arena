@@ -829,7 +829,12 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
             report.seller_btc_at_risk_sats += u128::from(seller_exposure);
             // Gross fiat flow includes a bank transfer even when a later
             // chargeback reverses the balance transfer.
-            if execution.node.journal.iter().any(|event| event.action == EasyAction::TransferFiat) {
+            if execution
+                .node
+                .journal
+                .iter()
+                .any(|event| event.action == EasyAction::TransferFiat)
+            {
                 report.fiat_volume_cents += u128::from(offer.quote_usd_cents);
             }
             if state.btc_delivered {
@@ -981,7 +986,12 @@ mod tests {
         let btc_deliveries = report
             .trades
             .iter()
-            .filter(|trade| matches!(trade.outcome, TradeOutcome::Completed | TradeOutcome::FiatChargebackAfterBtc))
+            .filter(|trade| {
+                matches!(
+                    trade.outcome,
+                    TradeOutcome::Completed | TradeOutcome::FiatChargebackAfterBtc
+                )
+            })
             .count();
         let gross_fiat: u128 = report
             .trades
