@@ -59,11 +59,6 @@ def scripted_seller(attack: bool = False) -> Solver:
             )
         else:
             sequence = HONEST_POLICY[case]
-        allowed = {
-            str(getattr(tool, "__name__", ""))
-            for tool in []
-        }  # Tool allowlist comes from the Setting's guard, checked below.
-        del allowed
         for token in sequence:
             if token == "trust-claim" and runtime.guard != "legacy":
                 raise AssertionError("strict guard cannot expose legacy trust-claim tool")
