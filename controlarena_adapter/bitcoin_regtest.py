@@ -112,8 +112,24 @@ class BitcoinCoreRPC:
             with self._opener.open(request, timeout=self.timeout) as response:
                 raw = response.read(2_000_001)
         except HTTPError as error:
-            # Error body can contain server paths or credentials, so only disclose status.
-            raise RegtestError(f"Bitcoin Core RPC HTTP status {error.code} ({method})") from error
+            # Bitcoin Core encodes ordinary RPC errors as HTTP 500. Decode
+            # enough to diagnose the regtest fixture, with bounded output.
+            code = "unknown"
+            detail = ""
+            try:
+                payload = json.loads(error.read(8_192).decode("utf-8"))
+                rpc_error = payload.get("error", {})
+                if isinstance(rpc_error, dict):
+                    code = str(rpc_error.get("code", "unknown"))
+                    raw_message = str(rpc_error.get("message", ""))
+                    detail = "".join(
+                        ch if 32 <= ord(ch) < 127 else " " for ch in raw_message
+                    )[:160]
+            except (ValueError, UnicodeError, TypeError):
+                pass
+            raise RegtestError(
+                f"Bitcoin Core RPC {method} HTTP {error.code}, code {code}: {detail}"
+            ) from error
         except (URLError, OSError, TimeoutError) as error:
             raise RegtestError(f"Bitcoin Core RPC unavailable ({method})") from error
         if len(raw) > 2_000_000:
