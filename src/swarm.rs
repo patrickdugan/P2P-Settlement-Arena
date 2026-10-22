@@ -5,8 +5,8 @@
 //! Every accepted trade is run through the single-trade EasyNode state machine.
 
 use crate::market::{
-    EasyAction, EasyActor, EasyEvent, EasyFault, EasyNode, Offer, Oracle, Rail,
-    SATS_PER_BTC, SIMULATED_CHAIN_FEE_SATS, SIMULATED_NOW,
+    EasyAction, EasyActor, EasyEvent, EasyFault, EasyNode, Offer, Oracle, Rail, SATS_PER_BTC,
+    SIMULATED_CHAIN_FEE_SATS, SIMULATED_NOW,
 };
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
@@ -263,7 +263,11 @@ fn listing_cmp(a: &Listing, b: &Listing, sellers: &[Seller], policy: ChoicePolic
         ChoicePolicy::BestPrice => a
             .price_cents
             .cmp(&b.price_cents)
-            .then(sellers[b.seller_idx].reputation.cmp(&sellers[a.seller_idx].reputation))
+            .then(
+                sellers[b.seller_idx]
+                    .reputation
+                    .cmp(&sellers[a.seller_idx].reputation),
+            )
             .then(a.id.cmp(&b.id)),
         ChoicePolicy::ReputationFirst => sellers[b.seller_idx]
             .reputation
@@ -429,7 +433,10 @@ fn expect_denial(
     *event_id += 1;
     let result = node.receive(event);
     if result != Err(expected) {
-        return Err(format!("expected {} rejection; observed {result:?}", expected.code()));
+        return Err(format!(
+            "expected {} rejection; observed {result:?}",
+            expected.code()
+        ));
     }
     Ok(())
 }
@@ -480,7 +487,12 @@ fn execute_trade(
     }
 
     // The modeled bank is separate from the buyer and signals a completed transfer.
-    dispatch(&mut node, &mut seq, EasyActor::Bank, EasyAction::TransferFiat)?;
+    dispatch(
+        &mut node,
+        &mut seq,
+        EasyActor::Bank,
+        EasyAction::TransferFiat,
+    )?;
     dispatch(
         &mut node,
         &mut seq,
@@ -495,7 +507,10 @@ fn execute_trade(
     )?;
 
     if buyer_behavior == BuyerBehavior::OversizedInvoice {
-        let inflated = offer.btc_sats.checked_mul(10).ok_or("overflowed invoice amount")?;
+        let inflated = offer
+            .btc_sats
+            .checked_mul(10)
+            .ok_or("overflowed invoice amount")?;
         expect_denial(
             &mut node,
             &mut seq,
@@ -512,7 +527,12 @@ fn execute_trade(
         for _ in 0..4 {
             dispatch(&mut node, &mut seq, EasyActor::Clock, EasyAction::Tick)?;
         }
-        dispatch(&mut node, &mut seq, EasyActor::Buyer, EasyAction::OpenDispute)?;
+        dispatch(
+            &mut node,
+            &mut seq,
+            EasyActor::Buyer,
+            EasyAction::OpenDispute,
+        )?;
         return Ok(Execution {
             node,
             blocked,
@@ -571,14 +591,8 @@ fn total_balances(buyers: &[Buyer], sellers: &[Seller], miner_fees: u128) -> (u1
             .iter()
             .map(|s| u128::from(s.fiat_cents))
             .sum::<u128>();
-    let btc = buyers
-        .iter()
-        .map(|b| u128::from(b.btc_sats))
-        .sum::<u128>()
-        + sellers
-            .iter()
-            .map(|s| u128::from(s.btc_sats))
-            .sum::<u128>()
+    let btc = buyers.iter().map(|b| u128::from(b.btc_sats)).sum::<u128>()
+        + sellers.iter().map(|s| u128::from(s.btc_sats)).sum::<u128>()
         + miner_fees;
     (fiat, btc)
 }
@@ -631,9 +645,7 @@ fn post_offer(
 ) -> Option<Listing> {
     let quote = FIAT_QUOTES_CENTS[rng.choose(FIAT_QUOTES_CENTS.len())];
     let price = BTC_PRICES_CENTS[rng.choose(BTC_PRICES_CENTS.len())];
-    let sats = (u128::from(quote) * SATS_PER_BTC
-        + u128::from(price / 2))
-        / u128::from(price);
+    let sats = (u128::from(quote) * SATS_PER_BTC + u128::from(price / 2)) / u128::from(price);
     let sats = u64::try_from(sats).ok()?;
     if seller.btc_sats < sats.checked_add(SIMULATED_CHAIN_FEE_SATS)? {
         return None;
@@ -661,7 +673,9 @@ fn choose_listing(
 ) -> Option<usize> {
     book.iter()
         .enumerate()
-        .filter(|(_, listing)| listing.within(&buyers[buyer_idx], &sellers[listing.seller_idx], policy))
+        .filter(|(_, listing)| {
+            listing.within(&buyers[buyer_idx], &sellers[listing.seller_idx], policy)
+        })
         .min_by(|(_, a), (_, b)| listing_cmp(a, b, sellers, policy))
         .map(|(index, _)| index)
 }
@@ -713,7 +727,9 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
 
     for round in 0..config.rounds {
         for listing in &mut book {
-            if listing.active && round.saturating_sub(listing.created_round) >= OFFER_LIFETIME_ROUNDS {
+            if listing.active
+                && round.saturating_sub(listing.created_round) >= OFFER_LIFETIME_ROUNDS
+            {
                 listing.active = false;
                 report.offers_expired += 1;
             }
@@ -722,7 +738,10 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
         // Each seller may have at most one resting listing. Only the seller
         // owning a listing can replenish it; a take consumes it exactly once.
         for (idx, seller) in sellers.iter().enumerate() {
-            if book.iter().any(|listing| listing.active && listing.seller_idx == idx) {
+            if book
+                .iter()
+                .any(|listing| listing.active && listing.seller_idx == idx)
+            {
                 continue;
             }
             if let Some(listing) = post_offer(idx, seller, round, &mut next_offer_id, &mut rng) {

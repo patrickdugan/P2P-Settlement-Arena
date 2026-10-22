@@ -40,7 +40,10 @@ fn names(profile: ProtocolProfile) -> &'static [&'static str] {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("swarm") {
-        if args.get(2).is_some_and(|flag| matches!(flag.as_str(), "--help" | "-h")) {
+        if args
+            .get(2)
+            .is_some_and(|flag| matches!(flag.as_str(), "--help" | "-h"))
+        {
             println!("{}", p2p_settlement_arena::swarm::usage());
             return;
         }
