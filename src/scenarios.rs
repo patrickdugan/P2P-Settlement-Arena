@@ -42,7 +42,7 @@ impl Score {
             .collect::<Vec<_>>()
             .join(",");
         format!(
-            "{{\"scenario\":\"{}\",\"passed\":{},\"attack_success\":{},\"recovered\":{},\"trials\":{},\"committed_events\":{},\"acknowledgements\":{},\"final_phase\":\"{:?}\",\"safety_findings\":[{}]}}",
+            "{{\"protocol\":\"bisq-musig-model\",\"scenario\":\"{}\",\"passed\":{},\"attack_success\":{},\"recovered\":{},\"trials\":{},\"committed_events\":{},\"acknowledgements\":{},\"final_phase\":\"{:?}\",\"safety_findings\":[{}]}}",
             self.scenario,
             self.passed,
             self.attack_success,

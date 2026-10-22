@@ -1,8 +1,11 @@
-//! Dependency-free, deterministic settlement state machine and crash harness.
+//! Dependency-free Bisq-inspired settlement laboratory.
+//! The root state machine below is the secondary MuSig-inspired model.
 //! This is an abstract protocol model: no Bitcoin signing, money movement, or networking.
 
 use std::collections::BTreeSet;
 
+pub mod agents;
+pub mod market;
 pub mod scenarios;
 
 pub const TRADE_SATS: u64 = 100_000;

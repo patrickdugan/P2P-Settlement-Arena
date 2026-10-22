@@ -21,9 +21,11 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Tests
         run: cargo test --all-targets --verbose
-      - name: Run all scenarios
-        run: cargo run --quiet -- all | tee arena-results.jsonl
+      - name: Bisq Easy scenarios
+        run: cargo run --quiet -- all | tee bisq-easy-results.jsonl
+      - name: MuSig-inspired scenarios
+        run: cargo run --quiet -- simulate --profile bisq-musig all | tee bisq-musig-results.jsonl
       - uses: actions/upload-artifact@v4
         with:
           name: arena-results
-          path: arena-results.jsonl
+          path: '*-results.jsonl'

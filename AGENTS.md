@@ -1,10 +1,12 @@
-# Agent engineering guidance
+# Coding agent instructions
 
-- Keep the initial Rust core dependency-free and deterministic.
-- Treat all balances as integer satoshis. Preserve conservation and terminal-payout invariants.
-- Whenever a receipt is added, test ACK-before-durable-commit and duplicate replay after recovery.
-- Never reinterpret \`passed\` as \`safe\`; negative-control attacks intentionally produce findings.
-- New fault injection points require deterministic regression tests.
-- Keep Bitcoin keys, real money, real payment credentials, production network access, and untrusted RPC calls outside this simulation.
-- When adding adapters, preserve the clean separation between a protocol model and the AISI/Redwood ControlArena integration.
-- Run \`cargo fmt --all\`, \`cargo clippy --all-targets -- -D warnings\`, \`cargo test\`, and \`cargo run -- all\` before proposing a merge.
+- **Bisq Easy is the default market profile**. It is payment-first, reputation-backed, and has no escrow. Use \`cargo run --\` and \`cargo run -- all\` to exercise it.
+- The secondary \`bisq-musig\` profile is an abstract escrow/crash/watchtower research model. Use \`cargo run -- simulate --profile bisq-musig all\`. Never conflate it with Bisq Easy or claim real MuSig cryptography is implemented.
+- Consult \`docs/PROTOCOL_PROFILES.md\` and current Bisq documentation before changing trade rules, reputation calculations, fee modeling, or price oracle checks.
+- Keep production dependencies at zero for now and tests deterministic. Use integer fiat cents and integer satoshis, with checked arithmetic and independent conservation properties.
+- Maintain a strict distinction between a buyer's statement that they paid and an external modeled bank transfer. BTC must not be sent based on the statement alone.
+- Any new attack path needs a legitimate baseline, a defended or intentionally vulnerable outcome, a reproducible oracle, and an automated regression test.
+- \`passed=true\` means the benchmark oracle behaved as designed, while \`attack_success=true\` means a forbidden outcome occurred in the simulated model.
+- Do not use real keys, wallets, production endpoints, user data, or fiat credentials in the arena.
+- Do not copy AGPL-3.0 Bisq 2 sources into this MIT codebase. Link to upstream specifications and implement behavior independently.
+- Run \`cargo fmt --all -- --check\`, \`cargo clippy --all-targets -- -D warnings\`, \`cargo test --all-targets\`, \`cargo run -- all\`, and \`cargo run -- simulate --profile bisq-musig all\`.

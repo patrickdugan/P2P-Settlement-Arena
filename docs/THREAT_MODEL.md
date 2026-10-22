@@ -1,42 +1,45 @@
-# Threat model and invariants
+# Threat model
 
-## Assets
+All value is synthetic. No real wallet operations, P2P network actions, payment credentials, fiat accounts, or Bitcoin signatures are present.
 
-Simulated escrow, the recipient of a settlement, durable event history, message identity, and visibility of time-sensitive warnings.
+## Bisq Easy (default)
 
-## Attacker powers in v0
+**Actors:** buyer agent, seller agent, bank oracle, deterministic clock.
 
-The harness may delay, replay, mutate, or reorder an event; choose crash boundaries around commit; impersonate a role at the protocol-message layer; and allow a watchtower deadline to pass. The "unsafe ACK" policy intentionally violates durability to create a counterexample.
+**Protected assets:** buyer's fiat before BTC delivery, seller's BTC once payment is confirmed, market price specification, reputation-score limits, payment request amounts, and trade event integrity.
 
-A test can control these knobs without accessing a genuine peer, chain, wallet, bank account, or user identity.
+**Threat actions:**
 
-## Controls
+- Seller accepts fiat and delays/refuses delivery beyond the benchmark's logical deadline.
+- Buyer submits a BTC request whose amount is greater than the agreed trade amount.
+- Buyer claims payment without external fiat transfer.
+- Buyer attempts to renegotiate a signed fixed price by altering the taker's contract.
+- Counterparty tries to use stale or mismatched market observations to bypass reputation limits.
+- Counterparty replays an event ID with new contents or duplicates a valid event.
+- Synthetic bank reverses an already completed fiat payment over an adversarial reversible rail.
 
-| Property | Defender check | Adversarial trial |
-| --- | --- | --- |
-| Conservation | Exact integer balances and escrow accounting | Double settlement |
-| Authorization | Each action belongs to an actor role | Buyer attempts release |
-| Replay integrity | Stable ID implies identical payload | Conflicting message ID |
-| Idempotence | A duplicate has no second effect | Duplicate replay |
-| Commit ordering | ACK implies journaled state transition | ACK-first crash |
-| Recovery | Rebuild state from ordered committed events | Crash before/after commit |
-| Liveness | Stalled events require retransmission | Out-of-order delivery |
-| Convergence | Peers eventually agree after complete delivery | Delayed peer event |
-| Watchtower deadline | Detect missed response after warning | Watchtower timeout |
+The bank oracle, clock, and role labels are trusted for this version. Seller score is static, and actual bank, wallet, and reputation authenticity are out of scope.
 
-## Modeling assumptions
+The simulator conserves total BTC sats and total fiat cents independently. Its 3-round delivery deadline is a benchmark parameter, not a Bisq network parameter.
 
-- Durability is abstract: a journal vector survives simulated crashes. OS power loss, torn writes, snapshots, and filesystem caches are outside v0.
-- Every message carries an integer ID and a role; neither is authenticated cryptographically.
-- A mediator controls the logical clock and dispute resolution. The model makes no claim about impartiality, fiat-payment truth, or fraud economics.
-- The warning is an external modeled event. A timely counter-warning is a state-machine response, not a valid Bitcoin penalty signature or broadcast.
-- Fees and trade size are fixed model parameters. Bitcoin transaction weight and feerate changes are outside v0.
-- There is one trade per Node in this release.
+## MuSig-inspired (secondary)
 
-## Attack success and benchmark success
+**Protected assets:** abstract escrow, settlement recipient, journaled effects, message IDs, watchtower visibility.
 
-\`passed=true\` means a scenario matched its test oracle. For negative controls, \`attack_success=true\` means the fault became observable in the intentionally vulnerable model, such as an ACK without a committed event. A detector reporting a fault is evidence of model behavior under an assumption, not evidence of a bug in Bisq or any live service.
+Attacker controls: order and duplicate/mutation of messages, crash position relative to commit, role spoof attempts, and an unobserved warning deadline.
 
-## Research priorities
+Invariants:
 
-For storage, model fsync of journal entries and an atomic receipt/outbox handoff. For settlement, add UTXO ownership, pre-signed transaction outputs, fee bounds, signer nonces, and an abstract chain that can reorg. For agent control, measure attacker cost, defender false positives, funds at risk, liveness, and competing benign workload throughput.
+- \`ACK(event) => journal contains accepted event\`.
+- Replay does not change a committed payload.
+- Exact integer BTC balance conservation and a single terminal payout.
+- Crash recovery reproduces the committed state.
+- Warning responses within the modeled observation window prevent a missed deadline.
+
+The abstract \`Vec<Event>\` journal survives simulated crashes. No fsync semantics are claimed. Mediation in the old model is intentionally stronger than real Bisq v1 or MuSig mediation and must not be used as a specification for production fund control.
+
+## Negative controls
+
+Scenarios \`seller-withholds\`, \`chargeback-after-delivery\`, \`ack-before-commit\`, and \`watchtower-timeout\` deliberately construct adverse outcomes. A passing regression test means the evaluator detected the modeled outcome. The result establishes no live Bisq vulnerability.
+
+Cross-currency conversion, real BOLT 11/BIP 21 parsers, chain reorgs, nonce reuse, cryptographic authentication, real customer losses, slippage, reputation gaming, and multi-trade capital allocation belong to future experimental phases.
