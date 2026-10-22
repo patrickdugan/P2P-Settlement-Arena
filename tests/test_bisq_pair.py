@@ -94,7 +94,7 @@ class PairingTests(unittest.TestCase):
     def test_pairing_token_first_line_must_be_ascii(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "pairing_qr_code.txt"
-            path.write_bytes(b"\\xff\\xfe\\n" + _qr_token(18600).encode("ascii"))
+            path.write_bytes(bytes((0xff, 0xfe, 0x0a)) + _qr_token(18600).encode("ascii"))
             path.chmod(0o600)
             with self.assertRaisesRegex(PairingError, "non-ASCII"):
                 read_pairing_file(path, 18600)
