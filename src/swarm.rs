@@ -161,6 +161,22 @@ impl SplitMix64 {
     fn percent(&mut self, threshold: u8) -> bool {
         self.choose(100) < usize::from(threshold)
     }
+
+    // External arrival and offer streams remain fixed across buyer policies.
+    fn for_offer(seed: u64, round: u32, seller_idx: usize) -> Self {
+        Self(
+            seed.wrapping_add(0xa076_1d64_78bd_642f)
+                .wrapping_add(u64::from(round).wrapping_mul(0xe703_7ed1_a0b4_28db))
+                .wrapping_add((seller_idx as u64).wrapping_mul(0x8ebc_6af0_9c88_c6e3)),
+        )
+    }
+
+    fn for_arrival(seed: u64, round: u32) -> Self {
+        Self(
+            seed.wrapping_add(0x5899_65cc_7537_4cc3)
+                .wrapping_add(u64::from(round).wrapping_mul(0xe703_7ed1_a0b4_28db)),
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -298,6 +314,7 @@ impl TradeOutcome {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeRecord {
+    pub policy: ChoicePolicy,
     pub round: u32,
     pub offer_id: u64,
     pub buyer_idx: usize,
@@ -316,7 +333,8 @@ pub struct TradeRecord {
 impl TradeRecord {
     pub fn json_line(&self) -> String {
         format!(
-            "{{\"kind\":\"trade\",\"round\":{},\"offer_id\":{},\"buyer\":{},\"seller\":{},\"quote_usd_cents\":{},\"btc_sats\":{},\"buyer_strategy\":\"{}\",\"seller_strategy\":\"{}\",\"outcome\":\"{}\",\"blocked_attacks\":{},\"buyer_usd_at_risk_cents\":{},\"seller_btc_at_risk_sats\":{},\"miner_fee_sats\":{}}}",
+            "{{\"kind\":\"trade\",\"policy\":\"{}\",\"round\":{},\"offer_id\":{},\"buyer\":{},\"seller\":{},\"quote_usd_cents\":{},\"btc_sats\":{},\"buyer_strategy\":\"{}\",\"seller_strategy\":\"{}\",\"outcome\":\"{}\",\"blocked_attacks\":{},\"buyer_usd_at_risk_cents\":{},\"seller_btc_at_risk_sats\":{},\"miner_fee_sats\":{}}}",
+            self.policy.id(),
             self.round,
             self.offer_id,
             self.buyer_idx,
@@ -744,13 +762,14 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
             {
                 continue;
             }
-            if let Some(listing) = post_offer(idx, seller, round, &mut next_offer_id, &mut rng) {
+            let mut offer_rng = SplitMix64::for_offer(config.seed, round, idx);
+            if let Some(listing) = post_offer(idx, seller, round, &mut next_offer_id, &mut offer_rng) {
                 book.push(listing);
                 report.offers_posted += 1;
             }
         }
 
-        let buyer_idx = rng.choose(buyers.len());
+        let buyer_idx = SplitMix64::for_arrival(config.seed, round).choose(buyers.len());
         let mut took_offer = false;
         // If a malformed or under-reputation offer fails protocol checks,
         // withdraw it and attempt the next eligible offer in this round.
@@ -819,6 +838,7 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
                 TradeOutcome::FiatChargebackAfterBtc => report.chargeback_after_btc += 1,
             }
             report.trades.push(TradeRecord {
+                policy: config.policy,
                 round,
                 offer_id: listing.id,
                 buyer_idx,
@@ -847,10 +867,88 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
     Ok(report)
 }
 
+
+/// Evaluate both buyer selection policies with shared exogenous randomness.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SwarmComparison {
+    pub reputation: SwarmReport,
+    pub price: SwarmReport,
+}
+
+impl SwarmComparison {
+    pub fn json_line(&self) -> String {
+        fn difference(price: u128, reputation: u128) -> i128 {
+            // The configured caps keep measured values far below i128::MAX.
+            price as i128 - reputation as i128
+        }
+        format!(
+            "{{\"kind\":\"policy_comparison\",\"protocol\":\"bisq-easy\",\"seed\":{},\"rounds\":{},\"paired_arrivals\":true,\"paired_offer_draws\":true,\"price_minus_reputation\":{{\"matched_trades\":{},\"completed\":{},\"attack_successes\":{},\"buyer_usd_at_risk_cents\":{},\"seller_btc_at_risk_sats\":{}}}}}",
+            self.reputation.config.seed,
+            self.reputation.config.rounds,
+            self.price.trades.len() as i128 - self.reputation.trades.len() as i128,
+            self.price.completed as i128 - self.reputation.completed as i128,
+            self.price.attack_successes() as i128 - self.reputation.attack_successes() as i128,
+            difference(self.price.buyer_usd_at_risk_cents, self.reputation.buyer_usd_at_risk_cents),
+            difference(self.price.seller_btc_at_risk_sats, self.reputation.seller_btc_at_risk_sats)
+        )
+    }
+}
+
+pub fn compare_policies(config: SwarmConfig) -> Result<SwarmComparison, String> {
+    config.validate()?;
+    let reputation = run_swarm(SwarmConfig {
+        policy: ChoicePolicy::ReputationFirst,
+        ..config
+    })?;
+    let price = run_swarm(SwarmConfig {
+        policy: ChoicePolicy::BestPrice,
+        ..config
+    })?;
+    Ok(SwarmComparison { reputation, price })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::market::EasyPhase;
+
+    #[test]
+    fn exogenous_streams_are_repeatable() {
+        for round in 0..50 {
+            assert_eq!(
+                SplitMix64::for_arrival(17, round).choose(11),
+                SplitMix64::for_arrival(17, round).choose(11)
+            );
+            let mut a = SplitMix64::for_offer(17, round, 3);
+            let mut b = SplitMix64::for_offer(17, round, 3);
+            assert_eq!(a.next_u64(), b.next_u64());
+            assert_eq!(a.next_u64(), b.next_u64());
+        }
+    }
+
+    #[test]
+    fn paired_comparison_uses_same_seed_and_both_policies() {
+        let config = SwarmConfig {
+            seed: 19,
+            rounds: 60,
+            ..SwarmConfig::default()
+        };
+        let comparison = compare_policies(config).unwrap();
+        assert_eq!(comparison.reputation.config.seed, comparison.price.config.seed);
+        assert_eq!(comparison.reputation.config.rounds, comparison.price.config.rounds);
+        assert_eq!(comparison.reputation.config.policy, ChoicePolicy::ReputationFirst);
+        assert_eq!(comparison.price.config.policy, ChoicePolicy::BestPrice);
+        assert!(comparison.reputation.conserved && comparison.price.conserved);
+        assert_eq!(
+            comparison.reputation,
+            run_swarm(SwarmConfig { policy: ChoicePolicy::ReputationFirst, ..config }).unwrap()
+        );
+        assert_eq!(
+            comparison.price,
+            run_swarm(SwarmConfig { policy: ChoicePolicy::BestPrice, ..config }).unwrap()
+        );
+        assert!(comparison.json_line().contains("\"paired_arrivals\":true"));
+    }
 
     #[test]
     fn deterministic_seed_reproduces_exact_trace() {

@@ -48,8 +48,7 @@ seller reputation and then offer ID as tie-breakers. The standard
 `Offer::verify` validation still applies; rejected offers are withdrawn and
 counted. Reversible rails here are *artificial adversarial inputs*.
 
-Both approaches use the exact same generated population for a given seed,
-though their selection decisions change which offers and buyers meet.
+Both approaches use the same generated population. Buyer arrivals are fixed per round, and each seller's candidate quote and price are fixed by `(seed, round, seller_id)`. Thus offers do not consume a shared random stream. Resulting inventory, active offers, and accepted matches can diverge between policies.
 
 ## Buyer and seller strategies
 
@@ -79,16 +78,17 @@ cargo run -- swarm
 cargo run -- swarm --seed 18 --rounds 200 --buyers 14 --sellers 10 --attacker-pct 25
 cargo run -- swarm --seed 18 --rounds 200 --buyers 14 --sellers 10 --attacker-pct 25 --policy price --trace > prices.jsonl
 cargo run -- swarm --seed 18 --rounds 200 --buyers 14 --sellers 10 --attacker-pct 25 --policy reputation --trace > reputation.jsonl
+cargo run -- swarm-compare --seed 18 --rounds 200 --buyers 14 --sellers 10 --attacker-pct 25 --trace > paired.jsonl
 ~~~
 
-`--trace` writes JSON objects of `kind=trade` plus a final
+`--trace` writes JSON objects of `kind=trade` (including policy) plus a final
 `kind=swarm_summary` object. All runs report exact integer USD cents and
 Bitcoin satoshis; there is no floating-point valuation.
 
 `attacker_percent` describes the share of agents randomly assigned an
 adversarial strategy. It is an input, not a measured share of attacks or
 successful exploits. A default seed is provided to make examples repeatable.
-Choose many seeds to avoid ranking policies on one generated population.
+Choose many seeds to avoid ranking policies on one generated population. `swarm-compare` outputs two policy summaries and a `kind=policy_comparison` record with signed best-price-minus-reputation differences. Both trials share external arrival and offer RNG streams, while inventory and resting-book availability respond to their distinct policy choices.
 
 ## Interpret the scoreboard carefully
 

@@ -1,7 +1,7 @@
 use p2p_settlement_arena::agents::{run_bisq_easy, BISQ_EASY_SCENARIOS};
 use p2p_settlement_arena::market::ProtocolProfile;
 use p2p_settlement_arena::scenarios::{run_scenario, SCENARIOS};
-use p2p_settlement_arena::swarm::{run_swarm, SwarmConfig};
+use p2p_settlement_arena::swarm::{compare_policies, run_swarm, SwarmConfig, SwarmReport};
 
 fn usage() {
     eprintln!(
@@ -13,6 +13,7 @@ fn usage() {
            settlement-arena simulate [scenario|all|list] [--profile bisq-easy|bisq-musig]\n\
            settlement-arena profiles\n\
            settlement-arena swarm [--seed 7 --rounds 48 --policy reputation --trace]\n\
+           settlement-arena swarm-compare [--seed 7 --rounds 48 --trace]\n\
          Output: JSONL for scenarios, nonzero exit for failed test or invalid input."
     );
 }
@@ -37,9 +38,19 @@ fn names(profile: ProtocolProfile) -> &'static [&'static str] {
     }
 }
 
+fn emit_swarm(report: &SwarmReport, trace: bool) {
+    if trace {
+        for trade in &report.trades {
+            println!("{}", trade.json_line());
+        }
+    }
+    println!("{}", report.json_line());
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.get(1).map(String::as_str) == Some("swarm") {
+    let command = args.get(1).map(String::as_str);
+    if matches!(command, Some("swarm" | "swarm-compare")) {
         if args
             .get(2)
             .is_some_and(|flag| matches!(flag.as_str(), "--help" | "-h"))
@@ -54,21 +65,33 @@ fn main() {
                 std::process::exit(2);
             }
         };
-        match run_swarm(config) {
-            Ok(report) => {
-                if trace {
-                    for trade in &report.trades {
-                        println!("{}", trade.json_line());
+        if command == Some("swarm-compare") {
+            match compare_policies(config) {
+                Ok(comparison) => {
+                    emit_swarm(&comparison.reputation, trace);
+                    emit_swarm(&comparison.price, trace);
+                    println!("{}", comparison.json_line());
+                    if !comparison.reputation.conserved || !comparison.price.conserved {
+                        std::process::exit(1);
                     }
                 }
-                println!("{}", report.json_line());
-                if !report.conserved {
+                Err(message) => {
+                    eprintln!("{message}");
                     std::process::exit(1);
                 }
             }
-            Err(message) => {
-                eprintln!("{message}");
-                std::process::exit(1);
+        } else {
+            match run_swarm(config) {
+                Ok(report) => {
+                    emit_swarm(&report, trace);
+                    if !report.conserved {
+                        std::process::exit(1);
+                    }
+                }
+                Err(message) => {
+                    eprintln!("{message}");
+                    std::process::exit(1);
+                }
             }
         }
         return;

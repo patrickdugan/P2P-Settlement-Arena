@@ -29,6 +29,8 @@ jobs:
         run: cargo run --quiet -- swarm --seed 7 --rounds 48 --trace | tee swarm-reputation-results.jsonl
       - name: Seeded Bisq marketplace (price policy)
         run: cargo run --quiet -- swarm --seed 7 --rounds 48 --policy price --trace | tee swarm-price-results.jsonl
+      - name: Paired buyer-policy comparison
+        run: cargo run --quiet -- swarm-compare --seed 42 --rounds 64 --trace | tee swarm-comparison-results.jsonl
       - uses: actions/upload-artifact@v4
         with:
           name: arena-results

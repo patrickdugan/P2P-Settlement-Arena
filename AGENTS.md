@@ -14,3 +14,4 @@
 - The `swarm` command uses a deterministic seed and synthetic offer book across many buyers/sellers. Keep fiat/BTC conservation across shared balances; prevent repeated matching of one offer ID. Test both `--policy reputation` and `--policy price`.
 - The swarm's 2x-reputation preference is an experimental buyer heuristic, separate from actual Bisq offer-validation limits. Keep this distinction in results and documentation.
 - Before merge, run `cargo run -- swarm --seed 7 --rounds 48` and a multi-seed test of conservation and reproducibility.
+- Use `cargo run -- swarm-compare --seed N --rounds R --trace` for paired policy experiments. Preserve policy-independent, counter-keyed buyer arrivals and seller quote proposals.

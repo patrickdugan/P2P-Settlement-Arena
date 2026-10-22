@@ -20,6 +20,7 @@ cargo run -- simulate --profile bisq-musig all # MuSig-inspired fault sweep
 cargo run -- profiles
 cargo run -- swarm --seed 7 --rounds 48                 # seeded Bisq market
 cargo run -- swarm --policy price --attacker-pct 50 --trace
+cargo run -- swarm-compare --seed 7 --rounds 48
 ~~~
 
 CI checks formatting, Clippy, Rust tests, and the entire scenario suite for **both** profiles. It uploads JSONL results.
@@ -73,13 +74,13 @@ cargo run -- swarm --seed 42 --rounds 100 --buyers 16 --sellers 12 --attacker-pc
 cargo run -- swarm --seed 42 --rounds 100 --buyers 16 --sellers 12 --attacker-pct 40 --policy reputation --trace
 ~~~
 
-- `--seed` fixes deterministic agent generation, offer ordering, and selection.
+- `--seed` fixes agent generation and policy-independent buyer arrival and offer quote streams.
 - `--policy reputation` (default) uses a **research-only** buyer strategy: demand 2x the reputation required for the amount and reject the synthetic reversible payment rail. This stricter filter is separate from Bisq's actual transaction acceptance rule.
 - `--policy price` chooses the lowest fixed BTC/USD offer, subject to the Bisq Easy offer checks implemented by the protocol model.
 - `--attacker-pct` controls the fraction of agents assigned adversarial behavior. Seller behaviors include BTC withholding; buyer behaviors include false payment claims, oversized BTC requests, and synthetic chargebacks.
 - `--trace` prints per-trade JSONL records followed by a summary, suitable for deterministic replay comparisons and future scoring adapters.
 
-The summary includes completed and unfilled trades, offer rejection, capital exposure, miner fees, simulated fiat/BTC turnover, blocked attacks, attacker wins, and global two-asset conservation. Seller BTC and buyer fiat balances carry across sequential matches. There is one scheduled match attempt per simulated round; the book is a synthetic discovery abstraction, since Bisq trades themselves are negotiated peer to peer.
+The `swarm-compare` command runs the buyer policies against a common seeded exogenous schedule and emits two summaries and a signed `price_minus_reputation` comparison. The summary includes completed and unfilled trades, offer rejection, capital exposure, miner fees, simulated fiat/BTC turnover, blocked attacks, attacker wins, and global two-asset conservation. Seller BTC and buyer fiat balances carry across sequential matches. There is one scheduled match attempt per simulated round; the book is a synthetic discovery abstraction, since Bisq trades themselves are negotiated peer to peer.
 
 The simulator has no custody, real fiat payments, signing, or API integration. A `seller_non_delivery` finding means the synthetic seller withheld BTC after receiving synthetic fiat; it does not establish any defect in Bisq.
 
