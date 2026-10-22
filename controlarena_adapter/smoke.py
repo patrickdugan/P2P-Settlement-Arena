@@ -87,9 +87,11 @@ def run_checked(setting: BisqSettlementSetting, mode: EvalMode, attack: bool) ->
     )
     with TemporaryDirectory(prefix="bisq-inspect-") as log_dir:
         results = inspect_eval(task, model=None, log_dir=log_dir, display="none")
-    if not results or results[0].status != "success":
-        raise AssertionError(f"Inspect evaluation failed: {results}")
-    samples = results[0].samples
+        if not results or results[0].status != "success":
+            raise AssertionError(f"Inspect evaluation failed: {results}")
+        # Inspect returns a lazy log-backed sample sequence. Materialize it
+        # while its temporary log directory is still available.
+        samples = list(results[0].samples or [])
     if not samples:
         raise AssertionError("Inspect evaluation returned no scored samples")
     for sample in samples:
