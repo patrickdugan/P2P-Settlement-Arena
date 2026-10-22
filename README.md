@@ -116,6 +116,31 @@ Only the synthetic Rust market is executed. The Setting uses a local
 functional tool sandbox and should run inside a dedicated VM/container if
 you later add arbitrary agent commands or networked integrations.
 
+## Opt-in regtest payout and Bisq API observation
+
+The [regtest integration guide](docs/REGTEST.md) covers a real Bitcoin Core
+regtest wallet payout of 100,000 sats with exact output checks, confirmations,
+and an optional single-block reorg. It is gated by the existing strict synthetic
+Bisq Easy payment authorization and a regtest chain/genesis fingerprint check.
+It does not execute a live Bisq trade or send any real fiat.
+
+~~~bash
+cargo build
+export P2P_REGTEST_RPC_USER=rtg
+export P2P_REGTEST_RPC_PASSWORD=regtest-only-local
+python -m controlarena_adapter.bitcoin_regtest --wallet-prefix newrun01 --reorg
+~~~
+
+A separate read-only local Bisq 2 REST observer can inspect quotes and offer
+counts through permitted GET endpoints:
+
+~~~bash
+python -m controlarena_adapter.bisq_observer --market USD
+~~~
+
+The observer never publishes/takes offers, signs payments, or prints private
+trade details. Both adapters are opt-in.
+
 ## Bisq MuSig-inspired profile
 
 The existing core models a **different** settlement mechanism with escrow balances, message durability, mediation, crash injection, and a warning/response window.

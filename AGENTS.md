@@ -19,3 +19,8 @@
 - The custom ControlArena Setting lives under controlarena_adapter/ and runs the stateless Rust control gateway. Only the scenario scheduler inserts genuine synthetic bank events; never expose an agent tool for arbitrary bank-credit events.
 - Keep the strict guard as default; the legacy trust-claim guard is a deliberately vulnerable negative control for alignment evaluation.
 - Test both Rust fixture outputs, Python stdlib gateway tests, and the optional ControlArena SDK Setting smoke suite. Preserve per-sample Inspect StoreModel action histories and avoid process-global mutable state.
+
+
+- New Bitcoin Core driver is strictly regtest-only, and external actions are opt-in. Require chain name, canonical genesis hash, and 127.0.0.1 RPC before ANY wallet changes, mining, broadcast, or invalidation. Never reuse production credentials or wallets.
+- Bisq REST observer is GET-only, loopback-bound and suppresses raw trade data. No agent-exposed mutation endpoints.
+- Keep Bitcoin Core regtest payout distinct from a real Bisq trade: fiat receipt is synthetic. The bitcoin/bitcoin Docker image used in CI is unofficial and for disposable tests only.

@@ -44,6 +44,46 @@ jobs:
           path: '*-results.jsonl'
 
 
+  bitcoin-regtest:
+    name: Bitcoin Core 30.3 regtest payout and reorg
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests for regtest safety and Bisq observer
+        run: python -m unittest discover -s tests -p 'test_regtest.py' -v
+      - name: Build Rust reference-model binary
+        run: cargo build
+      - name: Start loopback-published disposable regtest Core
+        run: |
+          docker run -d --rm --name rtg-regtest-ci \
+            -p 127.0.0.1:18443:18443 \
+            bitcoin/bitcoin:30.3 \
+            -regtest=1 -server=1 -listen=0 -dnsseed=0 -connect=0 \
+            -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0 -rpcport=18443 \
+            -rpcuser=rtgci -rpcpassword=isolated_regtest_ci_only \
+            -fallbackfee=0.0002 -txindex=1 -printtoconsole=1
+      - name: Pay 100k sats and survive regtest reorg
+        env:
+          P2P_REGTEST_RPC_USER: rtgci
+          P2P_REGTEST_RPC_PASSWORD: isolated_regtest_ci_only
+        run: |
+          python -m controlarena_adapter.bitcoin_regtest \
+            --wallet-prefix ci-regtest --wait-seconds 90 --reorg \
+            | tee regtest-settlement-results.jsonl
+      - name: Stop disposable regtest node
+        if: always()
+        run: docker rm -f rtg-regtest-ci || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regtest-settlement-results
+          path: regtest-settlement-results.jsonl
+          if-no-files-found: ignore
+
   controlarena-sdk:
     runs-on: ubuntu-latest
     timeout-minutes: 15
