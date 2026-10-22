@@ -61,7 +61,8 @@ The driver:
 6. Checks decoded output amount, buyer wallet receipt, miner fee and at least
    one confirmation.
 7. When --reorg is provided, invalidates the payout block and mines a
-   replacement, requiring reconfirmation of the same payout.
+   replacement to a fresh coinbase address, avoiding duplicate invalidated
+   block hashes, and requires reconfirmation of the same payout.
 8. Prints a JSON report containing chain, transaction ID, confirmed amount,
    satoshi fee, the reorg result and the synthetic authorization result.
 

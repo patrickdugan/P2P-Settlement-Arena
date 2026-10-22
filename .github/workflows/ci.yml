@@ -77,6 +77,9 @@ jobs:
             | tee regtest-settlement-results.jsonl
           python -c "import json; r=json.load(open('regtest-settlement-results.jsonl')); assert r['passed'] and r['reorg_detected'] and r['received_sats']==100000 and r['confirmations']>=1"
 
+      - name: Regtest bitcoind diagnostics on failure
+        if: failure()
+        run: docker logs --tail 100 rtg-regtest-ci || true
       - name: Stop disposable regtest node
         if: always()
         run: docker rm -f rtg-regtest-ci || true

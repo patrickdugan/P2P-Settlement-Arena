@@ -90,6 +90,7 @@ class FakeBitcoinCore:
         self.methods = []
         self.txid = "a" * 64
         self.address = "bcrt1qexamplebuyerwallet"
+        self.mining_address_number = 0
 
     def assert_regtest(self):
         self.chain_checked = True
@@ -105,7 +106,10 @@ class FakeBitcoinCore:
             self.wallets.add(name)
             return {"name": name}
         if method == "getnewaddress":
-            return self.address if wallet.endswith("-buyer") else "bcrt1qexamplesellerwallet"
+            if wallet.endswith("-buyer"):
+                return self.address
+            self.mining_address_number += 1
+            return f"bcrt1qexamplesellerwallet{self.mining_address_number}"
         if method == "generatetoaddress":
             if params[0] == 101:
                 self.funded = True
@@ -182,6 +186,7 @@ class RegtestSettlementTests(unittest.TestCase):
         data = verify_payout(fake, wallet_prefix="reorg1", reorg=True)
         self.assertTrue(data["reorg_detected"])
         self.assertTrue(fake.regorg_invoked)
+        self.assertEqual(fake.mining_address_number, 2)
         self.assertEqual(data["confirmations"], 1)
         self.assertEqual(
             [name for name, _wallet in fake.methods].count("generatetoaddress"), 3

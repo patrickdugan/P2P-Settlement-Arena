@@ -287,7 +287,13 @@ def verify_payout(
         if after_invalidating >= REQUIRED_CONFIRMATIONS:
             raise RegtestError("Invalidated payout block still reported confirmed")
         reorg_detected = True
-        rpc.guarded("generatetoaddress", [1, mine_to])
+        # After invalidateblock, mining to the same address in the same
+        # second can reproduce the invalidated block hash. A fresh coinbase
+        # script avoids this deterministic regtest collision.
+        replacement_mining_address = _new_address(rpc, seller_name)
+        if replacement_mining_address == mine_to:
+            raise RegtestError("Replacement block must use a new coinbase address")
+        rpc.guarded("generatetoaddress", [1, replacement_mining_address])
         if _confirmations(rpc, buyer_name, txid) < REQUIRED_CONFIRMATIONS:
             raise RegtestError("Payout did not reconfirm after isolated reorg")
 
