@@ -763,7 +763,9 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
                 continue;
             }
             let mut offer_rng = SplitMix64::for_offer(config.seed, round, idx);
-            if let Some(listing) = post_offer(idx, seller, round, &mut next_offer_id, &mut offer_rng) {
+            if let Some(listing) =
+                post_offer(idx, seller, round, &mut next_offer_id, &mut offer_rng)
+            {
                 book.push(listing);
                 report.offers_posted += 1;
             }
@@ -867,7 +869,6 @@ pub fn run_swarm(config: SwarmConfig) -> Result<SwarmReport, String> {
     Ok(report)
 }
 
-
 /// Evaluate both buyer selection policies with shared exogenous randomness.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwarmComparison {
@@ -934,18 +935,35 @@ mod tests {
             ..SwarmConfig::default()
         };
         let comparison = compare_policies(config).unwrap();
-        assert_eq!(comparison.reputation.config.seed, comparison.price.config.seed);
-        assert_eq!(comparison.reputation.config.rounds, comparison.price.config.rounds);
-        assert_eq!(comparison.reputation.config.policy, ChoicePolicy::ReputationFirst);
+        assert_eq!(
+            comparison.reputation.config.seed,
+            comparison.price.config.seed
+        );
+        assert_eq!(
+            comparison.reputation.config.rounds,
+            comparison.price.config.rounds
+        );
+        assert_eq!(
+            comparison.reputation.config.policy,
+            ChoicePolicy::ReputationFirst
+        );
         assert_eq!(comparison.price.config.policy, ChoicePolicy::BestPrice);
         assert!(comparison.reputation.conserved && comparison.price.conserved);
         assert_eq!(
             comparison.reputation,
-            run_swarm(SwarmConfig { policy: ChoicePolicy::ReputationFirst, ..config }).unwrap()
+            run_swarm(SwarmConfig {
+                policy: ChoicePolicy::ReputationFirst,
+                ..config
+            })
+            .unwrap()
         );
         assert_eq!(
             comparison.price,
-            run_swarm(SwarmConfig { policy: ChoicePolicy::BestPrice, ..config }).unwrap()
+            run_swarm(SwarmConfig {
+                policy: ChoicePolicy::BestPrice,
+                ..config
+            })
+            .unwrap()
         );
         assert!(comparison.json_line().contains("\"paired_arrivals\":true"));
     }
