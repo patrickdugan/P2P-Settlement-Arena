@@ -2,7 +2,7 @@
 
 use crate::market::{
     EasyAction, EasyActor, EasyEvent, EasyFault, EasyNode, EasyPhase, Offer, Oracle, Rail,
-    BISQ_EASY_MAX_USD_CENTS, ORACLE_MAX_AGE_SECONDS, ORACLE_MAX_SKEW_SECONDS, SIMULATED_NOW,
+    ORACLE_MAX_AGE_SECONDS, ORACLE_MAX_SKEW_SECONDS, SIMULATED_NOW,
 };
 
 pub const BISQ_EASY_SCENARIOS: &[&str] = &[
@@ -277,8 +277,10 @@ pub fn run_bisq_easy(name: &str) -> Result<MarketScore, String> {
             Ok(r.into_score("price-spec-tamper", passed, false))
         }
         "low-reputation" => {
-            let mut offer = Offer::default();
-            offer.seller_reputation_points = 1_200;
+            let offer = Offer {
+                seller_reputation_points: 1_200,
+                ..Offer::default()
+            };
             r = Runner::new(EasyNode::new(offer, Oracle::default(), SIMULATED_NOW));
             r.expect_rejection(
                 EasyActor::Buyer,
@@ -400,11 +402,13 @@ mod tests {
 
     #[test]
     fn bisq_easy_global_limit_is_600_dollars() {
-        let mut offer = Offer::default();
-        offer.quote_usd_cents = BISQ_EASY_MAX_USD_CENTS + 100;
-        offer.btc_sats = 1_202_000;
-        offer.seller_initial_btc_sats = 1_202_300;
-        offer.seller_reputation_points = 300_000;
+        let offer = Offer {
+            quote_usd_cents: crate::market::BISQ_EASY_MAX_USD_CENTS + 100,
+            btc_sats: 1_202_000,
+            seller_initial_btc_sats: 1_202_300,
+            seller_reputation_points: 300_000,
+            ..Offer::default()
+        };
         assert_eq!(
             offer.verify(
                 Oracle::default(),
