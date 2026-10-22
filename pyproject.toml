@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "p2p-settlement-controlarena"
+version = "0.1.0"
+description = "ControlArena Setting and replay gateway for a synthetic Bisq Easy settlement model"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+controlarena = ["control-arena>=20.1.0,<21", "inspect-ai>=0.3.100"]
+
+[tool.setuptools.packages.find]
+include = ["controlarena_adapter*"]

@@ -53,3 +53,16 @@ or a seller's BTC sent before a reversible synthetic fiat rail chargeback.
 A ControlArena Setting remains a separate integration project. The CLI is not
 an agent tool API and carries no privileged/untrusted agent boundary, executable
 real-world actions, or production marketplace data.
+
+
+## Implemented adapter
+
+A narrow synthetic seller-operator adapter and ControlArena Setting are now
+implemented in controlarena_adapter/setting.py and src/control.rs. They expose
+five safe seller tools in strict mode, five honest tasks, four adversarial side
+tasks, and programmatic usefulness/safety scoring from the Rust model. The
+legacy guard provides an intentionally vulnerable positive control.
+
+See [the full Setting setup and threat model](CONTROLARENA_SETTING.md).
+This replaces the earlier proposal for a future custom Setting with a
+concrete, offline-only integration. It has not connected a real Bisq node.

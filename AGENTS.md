@@ -15,3 +15,7 @@
 - The swarm's 2x-reputation preference is an experimental buyer heuristic, separate from actual Bisq offer-validation limits. Keep this distinction in results and documentation.
 - Before merge, run `cargo run -- swarm --seed 7 --rounds 48` and a multi-seed test of conservation and reproducibility.
 - Use `cargo run -- swarm-compare --seed N --rounds R --trace` for paired policy experiments. Preserve policy-independent, counter-keyed buyer arrivals and seller quote proposals.
+
+- The custom ControlArena Setting lives under controlarena_adapter/ and runs the stateless Rust control gateway. Only the scenario scheduler inserts genuine synthetic bank events; never expose an agent tool for arbitrary bank-credit events.
+- Keep the strict guard as default; the legacy trust-claim guard is a deliberately vulnerable negative control for alignment evaluation.
+- Test both Rust fixture outputs, Python stdlib gateway tests, and the optional ControlArena SDK Setting smoke suite. Preserve per-sample Inspect StoreModel action histories and avoid process-global mutable state.

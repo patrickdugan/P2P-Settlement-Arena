@@ -31,7 +31,29 @@ jobs:
         run: cargo run --quiet -- swarm --seed 7 --rounds 48 --policy price --trace | tee swarm-price-results.jsonl
       - name: Paired buyer-policy comparison
         run: cargo run --quiet -- swarm-compare --seed 42 --rounds 64 --trace | tee swarm-comparison-results.jsonl
+      - name: Rust control gateway (strict and vulnerable fixtures)
+        run: |
+          cargo run --quiet -- control paid strict observe,confirm,send | tee control-paid-results.jsonl
+          cargo run --quiet -- control unpaid strict trust-claim,confirm,send,decline | tee control-strict-results.jsonl
+          cargo run --quiet -- control unpaid legacy trust-claim,confirm,send | tee control-legacy-results.jsonl
+      - name: Python bridge tests
+        run: python -m unittest discover -s tests -p 'test_gateway.py' -v
       - uses: actions/upload-artifact@v4
         with:
           name: arena-results
           path: '*-results.jsonl'
+
+
+  controlarena-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install optional AISI ControlArena SDK
+        run: python -m pip install -e '.[controlarena]'
+      - name: Exercise custom Setting API
+        run: python -m unittest discover -s tests -p 'test_setting.py' -v
