@@ -45,7 +45,7 @@ jobs:
 
 
   bitcoin-regtest:
-    name: Bitcoin Core 30.3 regtest payout and reorg
+    name: Bitcoin Core 31.1 regtest payout and reorg
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -61,7 +61,7 @@ jobs:
         run: |
           docker run -d --rm --name rtg-regtest-ci \
             -p 127.0.0.1:18443:18443 \
-            bitcoin/bitcoin:30.3 \
+            bitcoin/bitcoin:31.1 \
             -regtest=1 -server=1 -listen=0 -dnsseed=0 -connect=0 \
             -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0 -rpcport=18443 \
             -rpcuser=rtgci -rpcpassword=isolated_regtest_ci_only \

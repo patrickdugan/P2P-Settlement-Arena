@@ -13,14 +13,14 @@ execute a Bisq trade, access Bisq wallets, or use Bisq payment credentials.
 
 ## 1. Start a disposable Bitcoin Core regtest daemon
 
-The sample uses the **unofficial** bitcoin/bitcoin:30.3 Docker testing image,
+The sample uses the **unofficial** bitcoin/bitcoin:31.1 Docker testing image,
 which is not endorsed by the Bitcoin Core project. A verified local bitcoind
 release is also supported if it exposes the same RPC on loopback.
 
 ~~~bash
 docker run -d --rm --name rtg-bitcoin-regtest \
   -p 127.0.0.1:18443:18443 \
-  bitcoin/bitcoin:30.3 \
+  bitcoin/bitcoin:31.1 \
   -regtest=1 -server=1 -listen=0 -dnsseed=0 -connect=0 \
   -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0 -rpcport=18443 \
   -rpcuser=rtg -rpcpassword=regtest-only-local \
@@ -112,7 +112,7 @@ never printed. To count your own closed trades explicitly, use --closed-trades.
 ## 5. CI and limitations
 
 The bitcoin-regtest GitHub Actions job runs Python safety-unit tests and an
-actual 30.3 bitcoind regtest container, tests a wallet payout with an injected
+actual 31.1 bitcoind regtest container, tests a wallet payout with an injected
 one-block reorg, then stops the disposable container. The report is uploaded
 as a JSONL artifact. All regtest activity is opt-in.
 
@@ -127,4 +127,4 @@ https://github.com/bisq-network/bisq2/blob/main/api/src/main/java/bisq/api/rest_
 https://github.com/bisq-network/bisq2/blob/main/api/src/main/java/bisq/api/rest_api/endpoints/trades/TradeRestApi.java
 https://github.com/bisq-network/bisq2/blob/main/api/src/main/java/bisq/api/access/filter/Headers.java
 https://github.com/bisq-network/bisq-musig/blob/main/testenv/README.md
-https://bitcoin.org/en/releases/30.3/
+https://bitcoin.org/en/releases/31.1/
