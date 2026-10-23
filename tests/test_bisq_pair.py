@@ -40,7 +40,7 @@ def _qr_token(port, expires_ms=None, code_id=TICKET_ID):
     code = (b"\x01" + _blob(code_id.encode()) + struct.pack(">q", expires_ms)
             + struct.pack(">i", 1) + struct.pack(">i", 9))
     raw = (b"\x01" + _blob(code)
-           + _blob(f"ws://127.0.0.1:{port}/api/v1/ws".encode())
+           + _blob(f"ws://127.0.0.1:{port}".encode())
            + b"\x00")
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
@@ -108,6 +108,7 @@ class PairingTests(unittest.TestCase):
         }
         result = pair_node(decode_ticket(_qr_token(18600)), 18600, "rtg_alice")
         self.assertEqual(result.headers()["Bisq-Session-Id"], "sessionabc12345")
+        self.assertEqual(result.websocket_url, "ws://127.0.0.1:18600/websocket")
         self.assertNotIn("hiddensecret123", repr(result))
         args = post.call_args.args
         self.assertEqual(args[1], "pairing")
@@ -185,7 +186,7 @@ class Subscriptions(unittest.TestCase):
                 raise TimeoutError()
 
         mock = FakeWs()
-        session = PairedSession("cid", "", "sid", "ws://127.0.0.1:18600/api/v1/ws")
+        session = PairedSession("cid", "", "sid", "ws://127.0.0.1:18600/websocket")
         view = snapshot(session, TRADE_ID, 100_000, connect_fn=lambda *args, **kw: mock)
         self.assertEqual(view.state, "BTC_CONFIRMED")
         self.assertEqual([v["topic"] for v in mock.sent], ["TRADES", "TRADE_PROPERTIES"])

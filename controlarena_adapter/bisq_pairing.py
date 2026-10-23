@@ -194,4 +194,9 @@ def pair_node(ticket: PairingTicket, port: int, client_name: str) -> PairedSessi
     values = [data.get(key) for key in ("clientId", "clientSecret", "sessionId")]
     if any(not isinstance(v, str) or len(v) < 8 for v in values):
         raise PairingError("Bisq pairing response missing credentials")
-    return PairedSession(values[0], values[1], values[2], ticket.websocket_url)
+    # Bisq2's pairing QR advertises the origin; the pinned upstream
+    # HttpServerBootstrapService registers the socket at /websocket.
+    return PairedSession(
+        values[0], values[1], values[2],
+        ticket.websocket_url.rstrip("/") + "/websocket",
+    )
