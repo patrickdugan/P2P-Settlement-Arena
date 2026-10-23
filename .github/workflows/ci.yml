@@ -1,8 +1,15 @@
 name: Rust checks
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+# PR branches receive one CI run per commit; main stays protected.
+# Superseded commits are cancelled rather than consuming duplicate runners.
+concurrency:
+  group: rust-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
