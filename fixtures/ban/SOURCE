@@ -1,0 +1,17 @@
+cashout_scenarios.jsonl is copied byte for byte from Bisq-Agent-Network (MIT):
+
+  repository: https://github.com/patrickdugan/Bisq-Agent-Network
+  commit:     2ae98c6b9e2fcd16df4af21eb175504120565177 (branch feat/cashout-alias-intent-v0)
+  path:       fixtures/arena/cashout_scenarios.jsonl
+  git blob:   17e19fcc8bbb70503e2305b2750a54a0a75a8325
+  sha256:     f727e09d84e4d65bac5d41b95bd87c51f211f21298aac1714c37c28da7724160 (LF line endings)
+
+Each line is one ArenaScenarioV1 (contract ban-arena-cashout/1, source SYNTHETIC_FIXTURE):
+the 12 BAN behaviors under cashout-btc-first and cashout-bisq-easy, in ILS (arena_supported
+false). BAN's scenario IDs for these lines are in its fixtures/arena/cashout_scenario_ids.json.
+src/cashout_import.rs tests every line against the arena's oracle table and runs the
+cashout-btc-first lines on their own amounts. Run them with:
+
+  cargo run -- cashout-import fixtures/ban/cashout_scenarios.jsonl
+
+A change to this file is a contract change: update it only from a new BAN commit.

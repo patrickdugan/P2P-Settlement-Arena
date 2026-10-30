@@ -5,6 +5,9 @@
 use std::collections::BTreeSet;
 
 pub mod agents;
+pub mod cashout;
+pub mod cashout_easy;
+pub mod cashout_import;
 pub mod control;
 pub mod market;
 pub mod scenarios;

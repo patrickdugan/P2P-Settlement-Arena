@@ -33,6 +33,12 @@ jobs:
         run: cargo run --quiet -- all | tee bisq-easy-results.jsonl
       - name: MuSig-inspired scenarios
         run: cargo run --quiet -- simulate --profile bisq-musig all | tee bisq-musig-results.jsonl
+      - name: Cashout profiles (BAN contract ban-arena-cashout/1)
+        run: |
+          set -o pipefail
+          cargo run --quiet -- simulate --profile cashout-btc-first all | tee cashout-btc-first-results.jsonl
+          cargo run --quiet -- simulate --profile cashout-bisq-easy all | tee cashout-bisq-easy-results.jsonl
+          cargo run --quiet -- cashout-import fixtures/ban/cashout_scenarios.jsonl | tee cashout-import-results.jsonl
       - name: Seeded Bisq marketplace (reputation policy)
         run: cargo run --quiet -- swarm --seed 7 --rounds 48 --trace | tee swarm-reputation-results.jsonl
       - name: Seeded Bisq marketplace (price policy)

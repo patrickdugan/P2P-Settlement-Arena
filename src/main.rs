@@ -1,4 +1,6 @@
 use p2p_settlement_arena::agents::{run_bisq_easy, BISQ_EASY_SCENARIOS};
+use p2p_settlement_arena::cashout::{run_cashout, CashoutProfile, CASHOUT_SCENARIOS};
+use p2p_settlement_arena::cashout_import::{parse_scenario, run_imported, ImportOutcome};
 use p2p_settlement_arena::control::{ControlCase, ControlSession, Guard};
 use p2p_settlement_arena::market::ProtocolProfile;
 use p2p_settlement_arena::scenarios::{run_scenario, SCENARIOS};
@@ -11,7 +13,8 @@ fn usage() {
            settlement-arena                                 # Bisq Easy honest trade\n\
            settlement-arena list\n\
            settlement-arena all\n\
-           settlement-arena simulate [scenario|all|list] [--profile bisq-easy|bisq-musig]\n\
+           settlement-arena simulate [scenario|all|list] [--profile bisq-easy|bisq-musig|cashout-btc-first|cashout-bisq-easy]\n\
+           settlement-arena cashout-import <ban-arena-scenarios.jsonl>\n\
            settlement-arena profiles\n\
            settlement-arena swarm [--seed 7 --rounds 48 --policy reputation --trace]\n\
            settlement-arena swarm-compare [--seed 7 --rounds 48 --trace]\n\
@@ -30,6 +33,15 @@ fn run_one(profile: ProtocolProfile, name: &str) -> Result<(String, bool), Strin
             let score = run_scenario(name)?;
             Ok((score.json_line(), score.passed))
         }
+        ProtocolProfile::CashoutBtcFirst | ProtocolProfile::CashoutBisqEasy => {
+            let cashout = if profile == ProtocolProfile::CashoutBtcFirst {
+                CashoutProfile::BtcFirst
+            } else {
+                CashoutProfile::BisqEasy
+            };
+            let score = run_cashout(cashout, name)?;
+            Ok((score.json_line(), score.passed))
+        }
     }
 }
 
@@ -37,7 +49,59 @@ fn names(profile: ProtocolProfile) -> &'static [&'static str] {
     match profile {
         ProtocolProfile::BisqEasy => BISQ_EASY_SCENARIOS,
         ProtocolProfile::BisqMuSigModel => SCENARIOS,
+        ProtocolProfile::CashoutBtcFirst | ProtocolProfile::CashoutBisqEasy => CASHOUT_SCENARIOS,
     }
+}
+
+/// Runs BAN `ArenaScenarioV1` lines; fails on a parse error, an oracle
+/// disagreement with BAN, or a scenario that misses its oracle.
+fn cashout_import(path: &str) -> i32 {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!("{path}: {error}");
+            return 2;
+        }
+    };
+    let mut failures = 0;
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let number = index + 1;
+        let scenario = match parse_scenario(line) {
+            Ok(scenario) => scenario,
+            Err(error) => {
+                eprintln!("line {number}: {error}");
+                failures += 1;
+                continue;
+            }
+        };
+        let label = format!("{}/{}", scenario.profile.id(), scenario.scenario);
+        match run_imported(&scenario) {
+            Ok(ImportOutcome::Ran { score, agrees }) => {
+                println!("{}", score.json_line());
+                if !agrees {
+                    eprintln!(
+                        "line {number}: {label}: arena oracle {} disagrees with BAN's {}",
+                        score.expected.code(),
+                        scenario.expected.code()
+                    );
+                    failures += 1;
+                } else if !score.passed {
+                    failures += 1;
+                }
+            }
+            Ok(ImportOutcome::Skipped(reason)) => {
+                eprintln!("line {number}: skipped {label}: {reason}");
+            }
+            Err(error) => {
+                eprintln!("line {number}: {label}: {error}");
+                failures += 1;
+            }
+        }
+    }
+    i32::from(failures > 0)
 }
 
 fn emit_swarm(report: &SwarmReport, trace: bool) {
@@ -134,9 +198,22 @@ fn main() {
         usage();
         return;
     }
+    if command == Some("cashout-import") {
+        let Some(path) = args.get(2).filter(|_| args.len() == 3) else {
+            usage();
+            std::process::exit(2);
+        };
+        let code = cashout_import(path);
+        if code != 0 {
+            std::process::exit(code);
+        }
+        return;
+    }
     if args.get(1).map(String::as_str) == Some("profiles") {
         println!("bisq-easy (default: payment-first, reputation-backed, no escrow)");
         println!("bisq-musig (experimental abstract escrow, journal, watchtower)");
+        println!("cashout-btc-first (BAN cashout: sender funds first, provider pays a third-party payee)");
+        println!("cashout-bisq-easy (BAN cashout on Bisq Easy: provider pays the payee first, sender releases on ack or rail evidence)");
         return;
     }
 

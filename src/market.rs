@@ -22,6 +22,10 @@ pub enum ProtocolProfile {
     #[default]
     BisqEasy,
     BisqMuSigModel,
+    /// BAN cashout, sender funds first (`cashout` module).
+    CashoutBtcFirst,
+    /// BAN cashout on the Bisq Easy machine (`cashout_easy` module).
+    CashoutBisqEasy,
 }
 
 impl ProtocolProfile {
@@ -29,6 +33,8 @@ impl ProtocolProfile {
         match value {
             "bisq" | "bisq-easy" => Some(Self::BisqEasy),
             "bisq-musig" | "musig" => Some(Self::BisqMuSigModel),
+            "cashout-btc-first" => Some(Self::CashoutBtcFirst),
+            "cashout-bisq-easy" => Some(Self::CashoutBisqEasy),
             _ => None,
         }
     }
@@ -37,6 +43,8 @@ impl ProtocolProfile {
         match self {
             Self::BisqEasy => "bisq-easy",
             Self::BisqMuSigModel => "bisq-musig-model",
+            Self::CashoutBtcFirst => "cashout-btc-first",
+            Self::CashoutBisqEasy => "cashout-bisq-easy",
         }
     }
 
@@ -44,6 +52,7 @@ impl ProtocolProfile {
         match self {
             Self::BisqEasy => "honest-trade",
             Self::BisqMuSigModel => "baseline",
+            Self::CashoutBtcFirst | Self::CashoutBisqEasy => "honest",
         }
     }
 }
@@ -552,6 +561,12 @@ mod tests {
             ProtocolProfile::parse("bisq-musig"),
             Some(ProtocolProfile::BisqMuSigModel)
         );
+        for profile in [
+            ProtocolProfile::CashoutBtcFirst,
+            ProtocolProfile::CashoutBisqEasy,
+        ] {
+            assert_eq!(ProtocolProfile::parse(profile.id()), Some(profile));
+        }
     }
 
     #[test]

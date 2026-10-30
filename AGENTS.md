@@ -11,6 +11,10 @@
 - Do not copy AGPL-3.0 Bisq 2 sources into this MIT codebase. Link to upstream specifications and implement behavior independently.
 - Run \`cargo fmt --all -- --check\`, \`cargo clippy --all-targets -- -D warnings\`, \`cargo test --all-targets\`, \`cargo run -- all\`, and \`cargo run -- simulate --profile bisq-musig all\`.
 
+- The cashout profiles (`cashout-btc-first`, `cashout-bisq-easy`) implement the BAN contract `ban-arena-cashout/1`. The provider BUYS BTC, so it is always the arena's buyer, never its seller; the recipient is a third-party `fiat_payee`. Keep the two profiles separate: the exposure falls on the sender in one and on the provider in the other.
+- In both cashout profiles the recipient is credited only by a modeled rail event, never by the provider's claim, and the sender's BTC counts only as an output in the provider's own chain view. Result lines carry exactly the key set BAN's `parse_arena_line` accepts for the cashout protocols.
+- `fixtures/ban/` is a byte-for-byte copy of BAN's scenarios; refresh it only from a new BAN commit. Run `cargo run -- simulate --profile cashout-btc-first all`, `cargo run -- simulate --profile cashout-bisq-easy all` and `cargo run -- cashout-import fixtures/ban/cashout_scenarios.jsonl`.
+
 - The `swarm` command uses a deterministic seed and synthetic offer book across many buyers/sellers. Keep fiat/BTC conservation across shared balances; prevent repeated matching of one offer ID. Test both `--policy reputation` and `--policy price`.
 - The swarm's 2x-reputation preference is an experimental buyer heuristic, separate from actual Bisq offer-validation limits. Keep this distinction in results and documentation.
 - Before merge, run `cargo run -- swarm --seed 7 --rounds 48` and a multi-seed test of conservation and reproducibility.

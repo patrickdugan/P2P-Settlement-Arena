@@ -1,0 +1,2 @@
+# Vendored contract fixtures are compared byte for byte with their source.
+fixtures/ban/*.jsonl text eol=lf

@@ -17,13 +17,16 @@ cargo run -- list
 cargo run -- all                               # every Bisq Easy scenario
 cargo run -- simulate seller-withholds
 cargo run -- simulate --profile bisq-musig all # MuSig-inspired fault sweep
+cargo run -- simulate --profile cashout-btc-first all  # BAN cashout, sender funds first
+cargo run -- simulate --profile cashout-bisq-easy all  # BAN cashout on the Bisq Easy machine
+cargo run -- cashout-import fixtures/ban/cashout_scenarios.jsonl
 cargo run -- profiles
 cargo run -- swarm --seed 7 --rounds 48                 # seeded Bisq market
 cargo run -- swarm --policy price --attacker-pct 50 --trace
 cargo run -- swarm-compare --seed 7 --rounds 48
 ~~~
 
-CI checks formatting, Clippy, Rust tests, and the entire scenario suite for **both** profiles. It uploads JSONL results.
+CI checks formatting, Clippy, Rust tests, and the entire scenario suite for **every** profile, including the two cashout profiles and the vendored BAN cashout scenarios. It uploads JSONL results.
 
 ### Sample: seller withholds BTC after fiat payment
 
@@ -182,6 +185,36 @@ ACK(message) => Durable(Applied(message))
 ~~~
 
 This profile uses a synthetic escrow model and a simulated watchtower. It does **not** implement actual MuSig signing, Taproot, PSBTs, adaptor secrets, staged transaction payouts, a wallet, regtest, or Bitcoin consensus. Calling it MuSig-inspired identifies the research target rather than protocol fidelity.
+
+## Cashout profiles (Bisq-Agent-Network contract)
+
+Two profiles score the **cashout** direction defined by the Bisq-Agent-Network
+contract `ban-arena-cashout/1`: a sender pays BTC, and a provider that **buys**
+it pays a third-party recipient's wallet through a modeled rail. The provider
+is the arena's `buyer`, the sender its `seller`, and the recipient a new
+`fiat_payee` role.
+
+- `cashout-btc-first`: the sender funds the provider's fresh deposit first, so
+  the **sender** bears provider non-delivery (`sender_btc_at_risk_sats`). It is
+  the mirror of Bisq Easy.
+- `cashout-bisq-easy`: the Bisq Easy machine with seller = sender and buyer =
+  provider. The provider pays the recipient first, and the sender releases BTC
+  only on the recipient's acknowledgment or rail evidence, so the **provider**
+  bears sender non-delivery (`provider_minor_at_risk`).
+
+Both run nine BAN behaviors (`honest`, `provider_withholds`, `sender_withholds`,
+`replay_funding`, `wrong_output`, `late_funding`, `duplicate_payout`,
+`rail_timeout`, `claim_without_credit`), and their lines carry exactly the key
+set BAN's `parse_arena_line` accepts:
+
+~~~json
+{"protocol":"cashout-btc-first","scenario":"provider_withholds","passed":true,"attack_success":true,"blocked_attacks":0,"committed_events":8,"final_phase":"Funded","sender_btc_at_risk_sats":100000,"provider_minor_at_risk":0,"recipient_credited_minor":0,"currency":"USD","exponent":2,"safety_findings":["provider_non_delivery"]}
+~~~
+
+`cashout-import` runs BAN's exported `ArenaScenarioV1` lines and fails if the
+arena's oracle disagrees with BAN's. Rules, the oracle table and the
+assumptions (sender reputation, honest recipient, currencies) are in
+[Protocol Profiles](docs/PROTOCOL_PROFILES.md#cashout-btc-to-a-third-party-fiat-payee-ban-contract-ban-arena-cashout1).
 
 ## Source boundaries
 
